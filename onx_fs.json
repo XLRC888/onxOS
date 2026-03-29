@@ -1,0 +1,17 @@
+{
+  "type": "dir",
+  "children": {
+    "help.atf": {
+      "type": "file",
+      "content": "hi there\nthe second line\nI LOVE TAU\nTAU = TAU AINT USERFRIENDLY"
+    },
+    "atf.hello": {
+      "type": "file",
+      "content": "i love my friends :wq\nsorry"
+    },
+    "ahmet": {
+      "type": "dir",
+      "children": {}
+    }
+  }
+}
