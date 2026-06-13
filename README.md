@@ -1,3 +1,11 @@
+```
+  ___    _   _   _   _   ___    ____
+ / _ \  | \ | | \ \ / / / _ \  | ___|
+| | | | |  \| |  \ | / | | | | |___ |
+| |_| | | |\  |  / | \ | |_| |  __| |
+ \___/  |_| \_| /_/ \_\ \___/  |____|
+```
+
 ## onxOS
 
 A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
