@@ -1,4 +1,4 @@
-onxOS
+## onxOS
 
 A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
 laptops, and QEMU. Comes with a persistent filesystem, AHCI/SATA support, a
@@ -12,28 +12,32 @@ budget at 582KB.
 
 Download the latest ISO from Releases, or build it yourself.
 
-QUICK START
+### QUICK START
 
+```
   make iso
+  
   make run
+```
+
 
 That boots it in QEMU with a 256MB virtual disk attached. Ctrl+A then X to
 exit. The ISO boots as onxIM (installation media) which can install to a real
 hard drive via the setup command. Once installed, it boots directly as onxOS.
 
-onxIM vs onxOS
+### onxIM vs onxOS
 
 The OS behaves slightly different depending on where it boots from:
 
-  onxIM   Booted from ISO or USB. The setup command is available for
+  onxIM : Booted from ISO or USB. The setup command is available for
           installing to hard drive.
 
-  onxOS   Booted from hard drive. The filesystem loads from disk and saves
+  onxOS : Booted from hard drive. The filesystem loads from disk and saves
           on exit.
 
 Check which mode you are in with ver or uname.
 
-BUILD REQUIREMENTS
+### BUILD REQUIREMENTS
 
   - gcc (i686 cross-compiler or native with -m32)
   - nasm
@@ -45,15 +49,20 @@ BUILD REQUIREMENTS
 
 On Arch Linux:
 
-  pacman -S base-devel nasm grub libisoburn python qemu-system-x86
+  
+```
+pacman -S base-devel nasm grub libisoburn python qemu-system-x86
+```
+
 
 The Makefile handles everything else. Just run make iso.
 
-SHELL
+### SHELL
 
 The shell supports tab completion, command history (!! and !n), and about 40
 commands. You get a filesystem, a text editor, and a cow.
 
+```
   / $ help
 
   onxOS shell help
@@ -91,12 +100,18 @@ commands. You get a filesystem, a text editor, and a cow.
     !! or !5         re-run from history
 
   note: exit saves the filesystem and halts
+```
 
+
+```
   / $ ver
 
   onxIM v0.0.1
   built for i686
+```
 
+
+```
   / $ cowsay onxOS
 
     _______
@@ -107,11 +122,14 @@ commands. You get a filesystem, a text editor, and a cow.
               (__)\       )\/\
                   ||----w |
                   ||     ||
+```
 
-INTERACTIVE SESSION
+
+### INTERACTIVE SESSION
 
 Here is what a real session looks like:
 
+```
   / $ pwd
   /
 
@@ -157,10 +175,10 @@ Here is what a real session looks like:
   3
   4
   5
+```
 
-TYPE HELP AND THAT IS WHAT YOU GET
 
-WHY THIS EXISTS
+### WHY THIS EXISTS
 
 Old netbooks with 1GB of RAM and Atom processors can run this. There is no X
 server, no audio, no networking, no bloat. The kernel and filesystem live in
@@ -173,48 +191,36 @@ idea of a good time is a shell and a filesystem and nothing else, this fits.
 The persistent filesystem saves to disk when you type exit. Reboot and your
 files are still there. No fsck, no journaling, no overhead. It just works.
 
-INSTALL TO HARD DRIVE
+### INSTALL TO HARD DRIVE
 
 Boot the ISO (onxIM mode), run setup, choose option 2. This writes the
 kernel and bootloader to the first hard drive at sector level. You can also
 use install.sh with a target device:
 
-  sudo ./install.sh /dev/sdX
+  
+```
+sudo ./install.sh /dev/sdX
+```
+
 
 This creates a partition layout, installs GRUB, and seeds the data partition.
 Boot from the drive and onxOS starts directly.
 
 For QEMU testing, make run creates a 256MB disk image and boots from it.
 
-EDITOR
+### EDITOR
 
 tau is a basic text editor built into the shell. Open it with:
 
-  tau filename.txt
+  
+```
+tau filename.txt
+```
+
 
 Controls are minimal. Type to insert, escape to exit, and the file is
 preserved in the filesystem. It is meant for quick edits, not IDE work.
 
-PROJECT STRUCTURE
+### LICENSE
 
-  src/boot/       Multiboot header and two-stage bootloader
-  src/kernel/     Kernel core: GDT, IDT, ISR, keyboard, VGA, serial, FS, shell
-  src/ld/         Linker script
-  Makefile        Build system
-  install.sh      Installation script for real hardware
-
-The bootloader is 16-bit real mode that transitions to 32-bit protected mode.
-GRUB is used only for ISO booting. Direct boots skip GRUB entirely and
-go through the built-in bootloader.
-
-BUILT WITH
-
-  - GCC with -ffreestanding and -Os
-  - NASM for assembly
-  - ld with --gc-sections
-  - Python for generating the initial filesystem image
-  - xorriso and GRUB for ISO creation
-
-LICENSE
-
-Do whatever you want with it. If it breaks your computer, keep both pieces.
+Do whatever you want OR can with it.
