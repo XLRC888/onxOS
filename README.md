@@ -1,12 +1,12 @@
-```
+<h2><pre>
   ___    _   _   _   _   ___    ____
  / _ \  | \ | | \ \ / / / _ \  | ___|
 | | | | |  \| |  \ | / | | | | |___ |
 | |_| | | |\  |  / | \ | |_| |  __| |
  \___/  |_| \_| /_/ \_\ \___/  |____|
-```
+</pre></h2>
 
-## onxOS
+
 
 A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
 laptops, and QEMU. Comes with a persistent filesystem, AHCI/SATA support, a
