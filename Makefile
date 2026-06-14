@@ -94,8 +94,7 @@ $(ISO): $(BUILD_DIR)/onxos.elf
 	mkdir -p $(ISODIR)/boot/grub
 	python3 tools/patch_aout.py $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
 	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n}\n' > $(ISODIR)/boot/grub/grub.cfg
-	grub-mkimage -O i386-pc-eltorito -p '/boot/grub' -o $(ISODIR)/boot/grub/cdboot.img biosdisk iso9660 multiboot
-	xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -R -J --grub2-boot-info --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img -b boot/grub/cdboot.img -no-emul-boot -boot-load-size 4 -boot-info-table -o $(ISO) $(ISODIR) 2>/dev/null
+	grub-mkrescue -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"
 	@ls -lh $(ISO)
 
