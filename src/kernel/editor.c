@@ -58,7 +58,6 @@ static void er(void) {
         if(li>=ed.lc){serial_write("~\r\n");continue;}
         serial_write("  ");serial_write(ed.l[li]);serial_write("\r\n");
     }
-    char bf[16];
     serial_write(" Ln ");itoa(ed.cr+1,bf,10);serial_write(bf);
     serial_write(", Col ");itoa(ed.cc+1,bf,10);serial_write(bf);
     serial_write("  \r\n");
