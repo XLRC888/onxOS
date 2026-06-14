@@ -26,4 +26,5 @@ void vga_scrollback_up(void);
 void vga_scrollback_down(void);
 int  vga_in_scrollback(void);
 void vga_scrollback_exit(void);
+void vga_load_font(void);
 #endif

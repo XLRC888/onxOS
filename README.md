@@ -115,7 +115,7 @@ commands. You get a filesystem, a text editor, and a cow.
 ```
   / $ ver
 
-  onxIM v0.0.2
+  onxIM v0.0.3
   built for i686
 ```
 

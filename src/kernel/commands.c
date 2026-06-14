@@ -193,7 +193,7 @@ void cmd_hexdump(fs_node_t *cwd, const char *arg) {
 }
 void cmd_ver(void) {
     const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
-    vga_write(on);vga_writeln(" v0.0.2");
+    vga_write(on);vga_writeln(" v0.0.3");
     vga_writeln("built for i686");
 }
 void cmd_reboot(void) {
