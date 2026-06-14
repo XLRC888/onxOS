@@ -73,6 +73,10 @@ cp "$SELF/build/disk.img" "$MP/boot/" 2>/dev/null || {
 cat > "$MP/boot/grub/grub.cfg" << 'GRUB'
 set timeout=0
 set default=0
+set gfxpayload=text
+set gfxpayload_keep=text
+terminal_output console
+
 menuentry "onxOS" {
     multiboot /boot/onxos.bin
     module /boot/disk.img
