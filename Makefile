@@ -26,7 +26,7 @@ C_OBJS_NO_SETUP = $(filter-out $(BUILD_DIR)/setup.o, $(C_OBJS))
 
 all: $(BUILD_DIR)/onxos.bin
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/kernel.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm
