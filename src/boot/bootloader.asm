@@ -72,10 +72,10 @@ bits 16
     xor ax, ax
     mov ds, ax
     mov es, ax
+    mov ax, 0x0003
+    int 0x10
     cli
-    in al, 0x92
-    or al, 2
-    out 0x92, al
+    call enable_a20
     lgdt [gdtr]
     mov eax, cr0
     or al, 1
@@ -101,6 +101,34 @@ bits 32
     mov eax, 0x2BADB002
     mov ebx, mbi_loc
     jmp KERN_ENTRY
+enable_a20:
+    push ax
+    push cx
+    cli
+    mov ax, 0x2401
+    int 0x15
+    jnc .done
+    mov al, 0xD1
+    out 0x64, al
+    call a20_delay
+    mov al, 0xDF
+    out 0x60, al
+    call a20_delay
+    in al, 0x92
+    or al, 2
+    out 0x92, al
+    call a20_delay
+.done:
+    pop cx
+    pop ax
+    ret
+a20_delay:
+    push cx
+    mov cx, 500
+.d: in al, 0x80
+    loop .d
+    pop cx
+    ret
 align 8
 gdt:
     dq 0
