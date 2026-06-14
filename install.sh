@@ -57,10 +57,10 @@ mkdir -p "$MP/boot/grub"
 grub-install --target=i386-pc --boot-directory="$MP/boot" "$TARGET" 2>&1
 
 echo "=== Copying kernel and disk image ==="
-cp "$SELF/build/onxos.bin" "$MP/boot/" 2>/dev/null || {
+cp "$SELF/build/onxos.elf" "$MP/boot/onxos.bin" 2>/dev/null || {
     echo ""
-    echo "Error: build/onxos.bin not found"
-    echo "Run 'make iso' first, then re-run this script"
+    echo "Error: build/onxos.elf not found"
+    echo "Run 'make' first, then re-run this script"
     umount "$MP" 2>/dev/null
     rm -rf "$MP"
     exit 1
