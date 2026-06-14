@@ -58,7 +58,14 @@ static void tc_show(void){
 static void tc_hide(void){
     if(pr>=24)pr=23;
     int tr=pr+1;
-    vga_set_cursor(tr,0);for(int i=0;i<79;i++)vga_putchar_raw(' ');
+    if(tr<24){
+        for(int y=tr;y<24;y++){
+            for(int x=0;x<80;x++)
+                ((uint16_t*)0xB8000)[y*80+x]=((uint16_t*)0xB8000)[(y+1)*80+x];
+        }
+    }
+    uint8_t col=COLOR_LIGHT_GREY|(COLOR_BLACK<<4);
+    for(int x=0;x<80;x++)((uint16_t*)0xB8000)[24*80+x]=((uint16_t)' ')|((uint16_t)col<<8);
     vga_set_cursor(pr,pc+lp);
 }
 static void ct(int pos) {
