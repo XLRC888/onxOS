@@ -110,7 +110,6 @@ void vga_hw_reset(void) {
     for (int i = 0; i < VW * VH * 2; i += 2) { vga[i] = ' '; vga[i + 1] = 0x07; }
 }
 void vga_init(void) {
-    vga_hw_reset();
     memcpy(grub_save, vb, VW * VH * 2);
     vga_clear(); uc();
 }
@@ -181,37 +180,36 @@ void vga_scrollback_init(void) {
     if (sb) return;
     sb = (uint16_t *)malloc(SB_ROWS * VW * 2);
     if (!sb) return;
-    for (int i = 0; i < VH; i++) {
-        int idx = (sb_cnt % SB_ROWS) * VW;
-        memcpy(&sb[idx], &grub_save[i * VW], VW * 2);
-        sb_cnt++;
-    }
+    sb_cnt = 0;
 }
 static void sb_render(void) {
     if (sb_view <= 0) return;
-    int end = sb_cnt - sb_view;
-    int start = end - VH + 1;
+    int start = sb_cnt - sb_view;
+    int total = sb_cnt + VH;
     uint8_t col = COLOR_LIGHT_GREY | (COLOR_BLACK << 4);
     uint8_t tilde = COLOR_DARK_GREY | (COLOR_BLACK << 4);
-    for (int r = 0; r < VH - 1; r++) {
-        int src_line = start + r;
-        if (src_line >= 0 && src_line < end && src_line < sb_cnt) {
-            int idx = (src_line % SB_ROWS) * VW;
+    for (int r = 0; r < VH; r++) {
+        int src = start + r;
+        if (src >= 0 && src < sb_cnt) {
+            int idx = (src % SB_ROWS) * VW;
             for (int x = 0; x < VW; x++) vb[r * VW + x] = sb[idx + x];
-        } else if (src_line < 0 || src_line >= sb_cnt) {
+        } else if (src >= sb_cnt && src < total) {
+            int li = src - sb_cnt;
+            for (int x = 0; x < VW; x++) vb[r * VW + x] = live_save[li * VW + x];
+        } else {
             vb[r * VW + 0] = me('~', tilde);
             for (int x = 1; x < VW; x++) vb[r * VW + x] = me(' ', col);
-        } else {
-            for (int x = 0; x < VW; x++) vb[r * VW + x] = me(' ', col);
         }
     }
-    uint8_t sc = COLOR_BLACK | (COLOR_LIGHT_GREY << 4);
-    char *t = " SCROLLBACK  PgUp/PgDn ";
-    for (int x = 0; x < VW; x++) vb[(VH - 1) * VW + x] = me(t[x % 28], sc);
+    uint8_t sc = COLOR_LIGHT_CYAN | (COLOR_BLACK << 4);
+    char *t = "[PgUp/PgDn]";
+    int sl = 11;
+    int ox = VW - sl - 1;
+    for (int i = 0; i < sl; i++) vb[(VH - 1) * VW + ox + i] = me(t[i], sc);
     vga_set_cursor(VH - 1, 0);
 }
 void vga_scrollback_up(void) {
-    if (!sb || sb_cnt == 0) return;
+    if (!sb) return;
     if (sb_view == 0) memcpy(live_save, vb, VW * VH * 2);
     if (sb_view < sb_cnt + VH - 1) { sb_view++; sb_render(); }
 }
