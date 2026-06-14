@@ -69,6 +69,7 @@ The Makefile handles everything else. Just run make iso.
 
 The shell supports tab completion, command history (!! and !n), and about 40
 commands. You get a filesystem, a text editor, and a cow.
+(also has a scrollback feature with PgUp and PgDn)
 
 ```
   / $ help
