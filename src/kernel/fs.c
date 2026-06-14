@@ -145,10 +145,10 @@ static int ahci_rw(int wr, uint32_t lba, uint8_t cnt, void *buf) {
     for (int i = 0; i < 64; i++) cfis[i] = 0;
     cfis[0] = 0x27; cfis[1] = 0x80;
     cfis[2] = wr ? 0xCA : 0xC8;
-    cfis[8] = 0xE0 | (uint8_t)((lba >> 24) & 0x0F);
-    cfis[9] = (uint8_t)(lba);
-    cfis[10] = (uint8_t)(lba >> 8);
-    cfis[11] = (uint8_t)(lba >> 16);
+    cfis[4] = (uint8_t)(lba);
+    cfis[5] = (uint8_t)(lba >> 8);
+    cfis[6] = (uint8_t)(lba >> 16);
+    cfis[7] = 0xE0 | (uint8_t)((lba >> 24) & 0x0F);
     cfis[12] = cnt;
     volatile uint32_t *ch = (volatile uint32_t *)ahci_cl_pa;
     ch[0] = 5 | (wr ? (1 << 6) : 0) | (1 << 16);
@@ -388,8 +388,9 @@ int fs_save_disk(void) {
     memset(&sb, 0, sizeof(sb));
     sb.magic = FS_MAGIC; sb.node_count = count; sb.root_index = 0;
     uint8_t *buf = (uint8_t *)malloc(ATA_SECTOR_SIZE * NODE_DISK_SECTORS);
-    if (!buf) return 0;
+    if (!buf) { serial_write("fs_save: no buf\n"); return 0; }
     int ok = 0, td = ata_base || ata_base2 || ahci_ok;
+    serial_write("fs_save: td=");serial_write(td?"y":"n");serial_write(" dlba=");serial_write_dec(data_lba);serial_write("\n");
     if (td) {
         ok = 1;
         if (data_lba == 0) {
@@ -398,6 +399,7 @@ int fs_save_disk(void) {
         }
         if (data_lba == 0) {
             uint8_t mbr[512]; int got = ata_rd(0, 1, mbr);
+            serial_write("fs_save: mbr got=");serial_write(got?"y":"n");serial_write("\n");
             if (got && mbr[510] == 0x55 && mbr[511] == 0xAA) {
                 for (int p = 0; p < 4; p++) {
                     uint8_t *e = mbr + 446 + p * 16;
@@ -423,14 +425,14 @@ int fs_save_disk(void) {
                 ata_wr(0, 1, mbr);
                 data_lba = dl; fs_set_data_lba(dl);
             }
-            if (data_lba == 0) { ok = 0; goto out; }
+            if (data_lba == 0) { serial_write("fs_save: no dlba\n"); ok = 0; goto out; }
         }
-        if (!ata_wr(0, 1, &sb)) { ok = 0; goto out; }
+        if (!ata_wr(0, 1, &sb)) { serial_write("fs_save: sb write fail\n"); ok = 0; goto out; }
         for (int i = 0; i < count; i++) {
             spack(nodes, count, buf, i);
-            if (!ata_wr(1 + i * NODE_DISK_SECTORS, NODE_DISK_SECTORS, buf)) { ok = 0; goto out; }
+            if (!ata_wr(1 + i * NODE_DISK_SECTORS, NODE_DISK_SECTORS, buf)) { serial_write("fs_save: node write fail\n"); ok = 0; goto out; }
         }
-    }
+    } else { serial_write("fs_save: no disk hw\n"); }
 out:
     free(buf);
     return ok;
@@ -444,6 +446,7 @@ static int dld(sector_read_t rd) {
     node_meta_t *metas = (node_meta_t *)malloc(sizeof(node_meta_t) * count);
     if (!metas) return 0;
     memset(&root_node, 0, sizeof(root_node));
+    root_node.parent = &root_node;
     fs_node_t *loaded[MAX_FILES];
     uint8_t *buf = (uint8_t *)malloc(ATA_SECTOR_SIZE * NODE_DISK_SECTORS);
     if (!buf) { free(metas); return 0; }
@@ -484,6 +487,7 @@ int fs_load_from_memory(void *data) {
     node_meta_t *metas = (node_meta_t *)malloc(sizeof(node_meta_t) * count);
     if (!metas) return 0;
     memset(&root_node, 0, sizeof(root_node));
+    root_node.parent = &root_node;
     fs_node_t *loaded[MAX_FILES];
     for (int i = 0; i < count; i++) {
         uint32_t off = 512 + (uint32_t)i * NODE_DISK_SECTORS * 512;

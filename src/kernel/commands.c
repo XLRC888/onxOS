@@ -93,16 +93,19 @@ void cmd_mkdir(fs_node_t *cwd, const char *arg) {
     const char *p=arg; int ok=0;
     while(1){char r[MAX_NAME];if(!token(&p,r,MAX_NAME))break;char tk[MAX_PATH];te(tk,r,MAX_PATH);
         fs_node_t *par;char name[MAX_NAME];if(!ps(tk,cwd,&par,name)){vga_write("mkdir: ");vga_write(r);vga_writeln(": parent not found");continue;}
-        if(!name[0])continue;if(fs_create_dir(par,name)){ok=1;continue;}
-        vga_write("mkdir: ");vga_write(r);vga_writeln(": failed (exists?)");}
+        if(!name[0])continue;
+        if(fs_find(par,name)){vga_write("mkdir: ");vga_write(r);vga_writeln(": already exists");continue;}
+        if(fs_create_dir(par,name)){ok=1;continue;}
+        vga_write("mkdir: ");vga_write(r);vga_writeln(": no space");}
     if(!ok)vga_writeln("mkdir: missing operand");
 }
 void cmd_touch(fs_node_t *cwd, const char *arg) {
     const char *p=arg; int ok=0;
     while(1){char r[MAX_NAME];if(!token(&p,r,MAX_NAME))break;char tk[MAX_PATH];te(tk,r,MAX_PATH);
         fs_node_t *par;char name[MAX_NAME];if(!ps(tk,cwd,&par,name)){vga_write("touch: ");vga_write(r);vga_writeln(": bad path");continue;}
-        if(!name[0])continue;if(fs_create_file(par,name)){ok=1;continue;}
-        vga_write("touch: ");vga_write(r);vga_writeln(": failed (exists?)");}
+        if(!name[0])continue;
+        if(fs_create_file(par,name)){ok=1;continue;}
+        vga_write("touch: ");vga_write(r);vga_writeln(": failed");}
     if(!ok)vga_writeln("touch: missing operand");
 }
 static int rr(fs_node_t *p, const char *n, int rec) {
@@ -193,7 +196,7 @@ void cmd_hexdump(fs_node_t *cwd, const char *arg) {
 }
 void cmd_ver(void) {
     const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
-    vga_write(on);vga_writeln(" v0.0.4");
+    vga_write(on);vga_writeln(" v0.0.5");
     vga_writeln("built for i686");
 }
 void cmd_reboot(void) {

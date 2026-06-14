@@ -95,7 +95,7 @@ $(ISO): $(BUILD_DIR)/onxos.elf $(DISK)
 	mkdir -p $(ISODIR)/boot/grub
 	cp $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
 	cp $(DISK) $(ISODIR)/boot/disk.img
-	printf 'set timeout=0\nset default=0\nset gfxpayload=text\nset gfxpayload_keep=text\nterminal_output console\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n\tmodule /boot/disk.img\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
+	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tset gfxpayload=text\n\tmultiboot /boot/onxos.bin\n\tmodule /boot/disk.img\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
 	grub-mkimage -O i386-pc-eltorito -p '/boot/grub' -o $(ISODIR)/boot/grub/cdboot.img biosdisk iso9660 multiboot
 	xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -R -J --grub2-boot-info --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img -b boot/grub/cdboot.img -no-emul-boot -boot-load-size 4 -boot-info-table -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"

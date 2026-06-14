@@ -1,6 +1,7 @@
 MBALIGN  equ  1 << 0
 MEMINFO  equ  1 << 1
-FLAGS    equ  MBALIGN | MEMINFO
+VIDMODE  equ  1 << 2
+FLAGS    equ  MBALIGN | MEMINFO | VIDMODE
 MAGIC    equ  0x1BADB002
 CHECKSUM equ -(MAGIC + FLAGS)
 section .multiboot
@@ -8,6 +9,15 @@ align 4
     dd MAGIC
     dd FLAGS
     dd CHECKSUM
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd 1
+    dd 80
+    dd 25
+    dd 0
 section .bss
 align 16
 stack_bottom:
@@ -16,9 +26,9 @@ stack_top:
 section .text
 global _start:function (_start.end - _start)
 _start:
-    mov dword [0xB8000], 0x4F4B
-    mov dword [0xB8004], 0x0F20
     mov esp, stack_top
+    mov dword [0xB8000], 0x0F4B0F4F
+    mov dword [0xB8004], 0x0F20
     cli
     push ebx
     push eax

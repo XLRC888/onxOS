@@ -63,7 +63,8 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         fs_node_t *par;char n[64];
         if(ls<=0){par=fs_get_root();strcpy(n,p+1);}
         else{char dp[MAX_PATH];strncpy(dp,p,ls);dp[ls]=0;par=fs_resolve(dp,cwd);strcpy(n,p+ls+1);}
-        if(!par||!n[0]){vga_writeln("tau: cannot create");return;}
+        if(!par||!n[0]){vga_writeln("tau: bad path");return;}
+        if(fs_find(par,n)){vga_writeln("tau: cannot create (exists)");return;}
         nd=fs_create_file(par,n);if(!nd){vga_writeln("tau: cannot create");return;}
     }
     if(nd->type!=FT_FILE){vga_writeln("tau: not a file");return;}
