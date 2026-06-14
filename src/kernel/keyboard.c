@@ -87,7 +87,7 @@ static void sc(uint8_t s) {
     if (caps && c >= 'A' && c <= 'Z') c += 32;
     if (c) push(c);
 }
-static void cb(registers_t *r) { (void)r; sc(inb(0x60)); }
+static void cb(registers_t *r) { (void)r; if (inb(0x64) & 1) sc(inb(0x60)); }
 void keyboard_init(void) {
     for (int i = 0; i < 100; i++) { if (inb(0x64) & 1) inb(0x60); else break; }
     outb(0x64, 0xAE);
