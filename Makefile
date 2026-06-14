@@ -7,7 +7,7 @@ CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
          -fno-asynchronous-unwind-tables -fmerge-all-constants
-LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections
+LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
 
 SRC_DIR = src/kernel
 BUILD_DIR = build
@@ -94,8 +94,8 @@ $(ISO): $(BUILD_DIR)/onxos.elf $(DISK)
 	mkdir -p $(ISODIR)/boot/grub
 	cp $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
 	cp $(DISK) $(ISODIR)/boot/disk.img
-	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tset gfxpayload=text\n\tmultiboot /boot/onxos.bin\n\tmodule /boot/disk.img\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
-	grub-mkimage -O i386-pc-eltorito -p '/boot/grub' -o $(ISODIR)/boot/grub/cdboot.img biosdisk iso9660 multiboot
+	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot2 /boot/onxos.bin\n\tmodule2 /boot/disk.img\n}\n' > $(ISODIR)/boot/grub/grub.cfg
+	grub-mkimage -O i386-pc-eltorito -p '/boot/grub' -o $(ISODIR)/boot/grub/cdboot.img biosdisk iso9660 multiboot multiboot2
 	xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -R -J --grub2-boot-info --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img -b boot/grub/cdboot.img -no-emul-boot -boot-load-size 4 -boot-info-table -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"
 	@ls -lh $(ISO)

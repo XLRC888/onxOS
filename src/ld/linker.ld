@@ -27,4 +27,10 @@ SECTIONS
         . = ALIGN(4096);
         end_of_kernel = .;
     }
+
+    /DISCARD/ : {
+        *(.note.GNU-stack)
+        *(.note*)
+        *(.comment*)
+    }
 }
