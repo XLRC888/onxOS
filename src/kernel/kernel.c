@@ -10,7 +10,8 @@
 #define HEAP_SIZE 0x100000
 extern uint32_t end_of_kernel;
 void kernel_early(unsigned int magic, unsigned int mb_info) {
-    if (magic != 0x2BADB002) mb_info = 0;
+    int is_mb2 = (magic == 0x36d76289);
+    if (magic != 0x2BADB002 && !is_mb2) mb_info = 0;
     vga_init();
     serial_init();
     serial_write("start\n");
@@ -23,13 +24,27 @@ void kernel_early(unsigned int magic, unsigned int mb_info) {
     serial_write("kbd ok\n");
     unsigned int mod_start = 0, mod_size = 0;
     if (mb_info) {
-        unsigned int *info = (unsigned int *)mb_info;
-        if (info[0] & (1 << 3)) {
-            unsigned int mc = info[5];
-            if (mc > 0) {
-                unsigned int *mod = (unsigned int *)info[6];
-                mod_start = mod[0];
-                mod_size = mod[1] - mod_start;
+        if (is_mb2) {
+            unsigned int tsz = *(unsigned int *)mb_info;
+            unsigned int *tag = (unsigned int *)(mb_info + 8);
+            while ((unsigned int)tag < mb_info + tsz) {
+                if (tag[0] == 3) {
+                    mod_start = tag[2];
+                    mod_size = tag[3] - mod_start;
+                    break;
+                }
+                if (tag[0] == 0) break;
+                tag = (unsigned int *)((uint8_t *)tag + (tag[1] < 8 ? 8 : (tag[1] + 7) & ~7));
+            }
+        } else {
+            unsigned int *info = (unsigned int *)mb_info;
+            if (info[0] & (1 << 3)) {
+                unsigned int mc = info[5];
+                if (mc > 0) {
+                    unsigned int *mod = (unsigned int *)info[6];
+                    mod_start = mod[0];
+                    mod_size = mod[1] - mod_start;
+                }
             }
         }
     }
