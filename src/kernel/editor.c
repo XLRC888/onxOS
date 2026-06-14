@@ -62,11 +62,10 @@ static char *es(const char *s) {
     strncpy(c,s,EC);c[EC]=0;return c;
 }
 void editor_open(fs_node_t *cwd, const char *filename) {
-    ((uint16_t*)0xB8000)[0]=(uint16_t)'X'|((uint16_t)0x0F<<8);
-    vga_putchar_raw('[');vga_putchar_raw('t');vga_putchar_raw('a');vga_putchar_raw('u');vga_putchar_raw(']');
-    vga_putchar_raw(' ');vga_putchar_raw('O');vga_putchar_raw('K');
-    vga_putchar_raw('\n');
-    char p[MAX_PATH];fs_to_absolute(p,cwd,filename);
+    uint16_t *vb=(uint16_t*)0xB8000;const char*s="[tau] OK";
+    for(int i=0;s[i];i++)vb[i]=(uint16_t)s[i]|((uint16_t)0x0F<<8);
+    while(1);
+}
     fs_node_t *nd=fs_resolve(p,cwd);
     if(!nd){
         vga_writeln("[tau] not found, creating...");
