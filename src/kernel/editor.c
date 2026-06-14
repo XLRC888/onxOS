@@ -50,18 +50,11 @@ static void er(void) {
     vs();memcpy((uint16_t*)0xB8000,fb,sizeof(fb));
     vga_set_cursor(1+ed.cr-ed.tl,2+ed.cc);
     if(serial_is_present()){
-        serial_write("\033[H");
-        serial_write(" tau - ");serial_write(ed.fn);
-        if(ed.dirty)serial_write(" [Modified]");
-        serial_write("  -- NORMAL --  \r\n");
-        for(int y=0;y<VR;y++){
-            int li=ed.tl+y;
-            if(li>=ed.lc){serial_write("~\r\n");continue;}
-            serial_write("  ");serial_write(ed.l[li]);serial_write("\r\n");
-        }
+        serial_write("\033[");serial_write_dec(ed.cr-ed.tl+2);serial_write(";1H");
+        serial_write("  ");serial_write(ed.l[ed.cr]);serial_write("\033[K\r\n");
         serial_write(" Ln ");itoa(ed.cr+1,bf,10);serial_write(bf);
         serial_write(", Col ");itoa(ed.cc+1,bf,10);serial_write(bf);
-        serial_write("  \r\n");
+        serial_write("  \033[K\r\n");
     }
 }
 static char *es(const char *s) {
@@ -90,6 +83,20 @@ void editor_open(fs_node_t *cwd, const char *filename) {
     }
     if(ed.lc==0){ed.l[0]=es("");ed.lc=1;}
     memcpy(sv,(uint16_t*)0xB8000,sizeof(sv));
+    if(serial_is_present()){
+        serial_write("\033[2J\033[H");
+        serial_write(" tau - ");serial_write(ed.fn);
+        serial_write("  -- NORMAL --  \r\n");
+        for(int y=0;y<VR;y++){
+            int li=y;
+            if(li>=ed.lc){serial_write("~\r\n");continue;}
+            serial_write("  ");serial_write(ed.l[li]);serial_write("\r\n");
+        }
+        char bf[16];
+        serial_write(" Ln ");itoa(ed.cr+1,bf,10);serial_write(bf);
+        serial_write(", Col ");itoa(ed.cc+1,bf,10);serial_write(bf);
+        serial_write("  \r\n");
+    }
     int run=1,rp=1;
     while(run){
         if(rp){er();rp=0;}
