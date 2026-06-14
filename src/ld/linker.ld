@@ -23,6 +23,7 @@ SECTIONS
     .bss : {
         *(COMMON)
         *(.bss)
+        *(.bss*)
         . = ALIGN(4096);
         end_of_kernel = .;
     }
