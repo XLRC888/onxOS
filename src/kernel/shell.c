@@ -121,7 +121,7 @@ static void exec(const char *cmd) {
     else if(strcmp(a[0],"hex")==0)cmd_hexdump(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"ver")==0)cmd_ver();
     else if(strcmp(a[0],"reboot")==0)cmd_reboot();
-    else if(strcmp(a[0],"tau")==0)cmd_tau(cd,ac>1?a[1]:"");
+    else if(strcmp(a[0],"tau")==0){vga_writeln("[0] exec dispatching tau");cmd_tau(cd,ac>1?a[1]:"");}
     else if(strcmp(a[0],"tree")==0)cmd_tree(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"find")==0)cmd_find(cd,ac>1?cmd+strlen(a[0]):"");
     else if(strcmp(a[0],"grep")==0)cmd_grep(cd,ac>1?cmd+strlen(a[0]):"");
