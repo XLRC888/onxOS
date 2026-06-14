@@ -6,7 +6,8 @@
  \___/  |_| \_| /_/ \_\ \___/  |____|
 </pre></h2>
 
-
+### Disclaimer:
+Use it at your own risk.
 
 A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
 laptops, and QEMU. Comes with a persistent filesystem, AHCI/SATA support, a
