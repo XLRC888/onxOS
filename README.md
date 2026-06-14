@@ -6,8 +6,6 @@
  \___/  |_| \_| /_/ \_\ \___/  |____|
 </pre></h2>
 
-
-
 A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
 laptops, and QEMU. Comes with a persistent filesystem, AHCI/SATA support, a
 text editor, and a shell that has way more commands than it should.
@@ -233,3 +231,7 @@ preserved in the filesystem. It is meant for quick edits, not IDE work.
 ### LICENSE
 
 Do whatever you want OR can with it.
+
+
+### DISCLAIMER
+Use it at your own risk.
