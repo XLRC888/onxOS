@@ -74,6 +74,9 @@ bits 16
     mov es, ax
     mov ax, 0x0003
     int 0x10
+    mov ax, 0x0500
+    mov bh, 0
+    int 0x10
     cli
     call enable_a20
     lgdt [gdtr]

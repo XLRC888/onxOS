@@ -18,6 +18,7 @@ static uint16_t *sb = NULL;
 static int sb_cnt = 0;
 static uint16_t live_save[VW * VH];
 static int sb_view = 0;
+static uint16_t vga_init_buf[VW * VH];
 static uint8_t mc(void) { return fg | (bg << 4); }
 static uint16_t me(char c, uint8_t col) { return (uint16_t)c | ((uint16_t)col << 8); }
 static void uc(void) {
@@ -61,12 +62,13 @@ void vga_load_font(void) {
 }
 
 void vga_init(void) {
-    memcpy(grub_save, vb, VW * VH * 2);
+    outb(0x3D4, 0x0C); outb(0x3D5, 0x00);
+    outb(0x3D4, 0x0D); outb(0x3D5, 0x00);
     inb(0x3DA); outb(0x3C0, 0x10 | 0x20);
     uint8_t ac = inb(0x3C1);
     outb(0x3C0, ac | 0x08);
+    memcpy(grub_save, vb, VW * VH * 2);
     vga_clear(); uc();
-    vga_load_font();
 }
 void vga_clear(void) {
     uint8_t c = mc();
