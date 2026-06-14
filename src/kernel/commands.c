@@ -205,8 +205,10 @@ void cmd_reboot(void) {
     for(;;)__asm__ volatile("hlt");
 }
 void cmd_tau(fs_node_t *cwd, const char *arg) {
+    vga_writeln("[1] cmd_tau entered");
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tau: need filename");return;}
+    vga_writeln("[2] calling editor_open");
     editor_open(cwd,tk);
 }
 static void pt(fs_node_t *d, int depth) {
