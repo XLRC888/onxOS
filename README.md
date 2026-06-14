@@ -36,7 +36,7 @@ hard drive via the setup command. Once installed, it boots directly as onxOS.
 The OS behaves slightly different depending on where it boots from:
 
   onxIM : Booted from ISO or USB. The setup command is available for
-          installing to hard drive.
+          installing to hard drive. Files will not be saved.
 
   onxOS : Booted from hard drive. The filesystem loads from disk and saves
           on exit.
@@ -188,8 +188,8 @@ Here is what a real session looks like:
 ### WHY THIS EXISTS
 
 Old netbooks with 1GB of RAM and Atom processors can run this. There is no X
-server, no audio, no networking, no bloat. The kernel and filesystem live in
-memory and the boot time is measured in seconds even on spinning rust.
+server, no audio, no networking, no bloat. The kernel lives in memory and the
+boot time is measured in seconds even on spinning rust.
 
 It is not trying to replace Linux. It is a self-contained environment for
 editing text files, writing code, or tinkering with a minimal OS. If your
