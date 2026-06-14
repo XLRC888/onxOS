@@ -63,7 +63,9 @@ static char *es(const char *s) {
 }
 void editor_open(fs_node_t *cwd, const char *filename) {
     ((uint16_t*)0xB8000)[0]=(uint16_t)'X'|((uint16_t)0x0F<<8);
-    vga_writeln("[tau] resolving...");
+    vga_putchar_raw('[');vga_putchar_raw('t');vga_putchar_raw('a');vga_putchar_raw('u');vga_putchar_raw(']');
+    vga_putchar_raw(' ');vga_putchar_raw('O');vga_putchar_raw('K');
+    vga_putchar_raw('\n');
     char p[MAX_PATH];fs_to_absolute(p,cwd,filename);
     fs_node_t *nd=fs_resolve(p,cwd);
     if(!nd){
