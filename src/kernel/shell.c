@@ -160,6 +160,7 @@ void shell_run(void) {
     if (fs_get_boot_media()) { vga_set_fg(COLOR_LIGHT_RED); vga_writeln("files will not be saved in onxIM mode"); vga_set_fg(COLOR_LIGHT_GREY); }
     vga_writeln("");
     while(1){
+        vga_set_cursor(vga_get_cursor_row(),0);
         const char *prompt=gp();vga_write(prompt);
         pr=vga_get_cursor_row();pc=vga_get_cursor_col();
         lp=0;lb[0]=0;tc.active=0;int done=0;const char *saved=0;
