@@ -383,12 +383,14 @@ void cmd_tac(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tac: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tac: not a file");return;}
-    const char *c=nd->content;char lines[256][256];int lc=0,ci=0;
-    for(int i=0;c[i]&&lc<256;i++){
-        if(c[i]=='\n'){lines[lc][ci]=0;lc++;ci=0;}
-        else if(ci<255)lines[lc][ci++]=c[i];
+    const char *c=nd->content;int lc=0,ci=0;
+    int ms=256,ml=256;char *buf=(char*)malloc(ms*ml);if(!buf){vga_writeln("tac: oom");return;}
+    for(int i=0;c[i]&&lc<ms;i++){
+        if(c[i]=='\n'){buf[lc*ml+ci]=0;lc++;ci=0;}
+        else if(ci<ml-1)buf[lc*ml+ci++]=c[i];
     }
-    for(int i=lc-1;i>=0;i--)vga_writeln(lines[i]);
+    for(int i=lc-1;i>=0;i--)vga_writeln(buf+i*ml);
+    free(buf);
 }
 void cmd_base64(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
