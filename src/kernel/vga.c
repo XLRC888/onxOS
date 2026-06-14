@@ -26,6 +26,9 @@ static void uc(void) {
 }
 void vga_init(void) {
     memcpy(grub_save, vb, VW * VH * 2);
+    inb(0x3DA); outb(0x3C0, 0x10 | 0x20);
+    uint8_t ac = inb(0x3C1);
+    outb(0x3C0, ac | 0x08);
     vga_clear(); uc();
 }
 void vga_clear(void) {

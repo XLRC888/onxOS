@@ -110,9 +110,13 @@ void editor_open(fs_node_t *cwd, const char *filename) {
             ln[ed.cc]=c;ed.cc++;mod=1;}}
         if(mod)ed.dirty=1;
     }
-    char res[4096];res[0]=0;
-    for(int i=0;i<ed.lc;i++){strcat(res,ed.l[i]);strcat(res,"\n");}
-    strncpy(ed.nd->content,res,4095);ed.nd->content[4095]=0;
+    int ri=0;ed.nd->content[0]=0;
+    for(int i=0;i<ed.lc&&ri<4090;i++){
+        int ll=strlen(ed.l[i]);if(ll>4090-ri)ll=4090-ri;
+        memcpy(ed.nd->content+ri,ed.l[i],ll);ri+=ll;
+        if(ri<4095){ed.nd->content[ri]='\n';ri++;}
+    }
+    ed.nd->content[ri]=0;
     memcpy((uint16_t*)0xB8000,sv,sizeof(sv));
     vga_set_cursor(24,0);vga_set_fg(COLOR_LIGHT_GREY);vga_set_bg(COLOR_BLACK);
     vga_writeln("tau: saved");
