@@ -19,6 +19,7 @@ void kernel_early(unsigned int magic, unsigned int mb_info) {
     idt_init();
     serial_write("idt ok\n");
     keyboard_init();
+    __asm__ volatile("sti");
     serial_write("kbd ok\n");
     unsigned int mod_start = 0, mod_size = 0;
     if (mb_info) {

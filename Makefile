@@ -51,10 +51,10 @@ $(PRE_KERN): $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_pre.o
 $(SIZE_MK): $(PRE_KERN)
 	mkdir -p $(GEN_DIR)
 	objcopy -O binary $(PRE_KERN) /tmp/_kflat 2>/dev/null; \
-	F=$$(wc -c < /tmp/_kflat); \
+	F=$$(wc -c < /tmp/_kflat | awk '{print $$1}'); \
 	S=$$(( (F + 511) / 512 )); \
-	FS=$$(readelf -l $(PRE_KERN) | awk '/LOAD/{print $$5}' | head -1 | sed 's/0x//'); \
-	MS=$$(readelf -l $(PRE_KERN) | awk '/LOAD/{print $$6}' | head -1 | sed 's/0x//'); \
+	FS=$$(printf '%X' $$F); \
+	MS=$$(readelf -l $(PRE_KERN) | awk '/LOAD/{addr=$$3; sz=$$6} END{print addr, sz}' | python3 -c "import sys; a,s=sys.stdin.read().split(); print('%X' % (int(a,16)+int(s,16)-0x100000))"); \
 	echo "KERN_SECT=$$S" > $@; \
 	echo "KERN_FSZ=0x$$FS" >> $@; \
 	echo "BSS_SZ=0x$$MS" >> $@
@@ -71,9 +71,12 @@ $(BOOTBLOB_H): $(BOOTBLOB)
 $(BUILD_DIR)/setup_final.o: $(SRC_DIR)/setup.c $(BOOTBLOB_H)
 	$(CC) $(CFLAGS) -I$(GEN_DIR) -c $< -o $@
 
-$(BUILD_DIR)/onxos.bin: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_final.o
+$(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_final.o
 	$(LD) $(LDFLAGS) -o $@ $^
 	strip --strip-all -R .comment -R .note $@ 2>/dev/null || true
+
+$(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
+	objcopy -O binary $< $@
 	@echo "Built: $(BUILD_DIR)/onxos.bin"
 	@ls -lh $@
 
@@ -87,12 +90,12 @@ $(DISK):
 
 iso: $(ISO)
 
-$(ISO): $(BUILD_DIR)/onxos.bin $(DISK)
+$(ISO): $(BUILD_DIR)/onxos.elf $(DISK)
 	rm -rf $(ISODIR) $(ISO)
 	mkdir -p $(ISODIR)/boot/grub
-	cp $< $(ISODIR)/boot/onxos.bin
+	cp $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
 	cp $(DISK) $(ISODIR)/boot/disk.img
-	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n\tmodule /boot/disk.img\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
+	printf 'set timeout=0\nset default=0\nset gfxpayload=text\nset gfxpayload_keep=text\nterminal_output console\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n\tmodule /boot/disk.img\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
 	grub-mkimage -O i386-pc-eltorito -p '/boot/grub' -o $(ISODIR)/boot/grub/cdboot.img biosdisk iso9660 multiboot
 	xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -R -J --grub2-boot-info --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img -b boot/grub/cdboot.img -no-emul-boot -boot-load-size 4 -boot-info-table -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"

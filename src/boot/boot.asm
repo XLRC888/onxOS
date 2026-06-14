@@ -16,6 +16,8 @@ stack_top:
 section .text
 global _start:function (_start.end - _start)
 _start:
+    mov dword [0xB8000], 0x4F4B
+    mov dword [0xB8004], 0x0F20
     mov esp, stack_top
     cli
     push ebx
