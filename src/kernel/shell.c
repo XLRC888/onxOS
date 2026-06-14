@@ -150,6 +150,7 @@ void shell_run(void) {
     const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
     vga_set_fg(COLOR_LIGHT_GREEN);vga_write(on);vga_write(" " ONX_VERSION);
     vga_set_fg(COLOR_LIGHT_GREY);vga_writeln(" - type 'help'");
+    if (fs_get_boot_media()) { vga_set_fg(COLOR_LIGHT_RED); vga_writeln("  files will not be saved in onxIM mode"); vga_set_fg(COLOR_LIGHT_GREY); }
     vga_writeln("");
     while(1){
         const char *prompt=gp();vga_write(prompt);
