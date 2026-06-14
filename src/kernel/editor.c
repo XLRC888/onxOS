@@ -62,9 +62,11 @@ static char *es(const char *s) {
     strncpy(c,s,EC);c[EC]=0;return c;
 }
 void editor_open(fs_node_t *cwd, const char *filename) {
+    vga_writeln("[tau] resolving...");
     char p[MAX_PATH];fs_to_absolute(p,cwd,filename);
     fs_node_t *nd=fs_resolve(p,cwd);
     if(!nd){
+        vga_writeln("[tau] not found, creating...");
         int ls=-1;for(int i=0;p[i];i++)if(p[i]=='/')ls=i;
         fs_node_t *par;char n[64];
         if(ls<=0){par=fs_get_root();strcpy(n,p+1);}
@@ -74,6 +76,7 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         nd=fs_create_file(par,n);if(!nd){vga_writeln("tau: cannot create");return;}
     }
     if(nd->type!=FT_FILE){vga_writeln("tau: not a file");return;}
+    vga_writeln("[tau] reading content...");
     ed.nd=nd;strncpy(ed.fn,nd->name,63);ed.fn[63]=0;
     ed.lc=0;ed.cr=0;ed.cc=0;ed.tl=0;ed.dirty=0;
     const char *ct=nd->content;char lb[EC+1];int ci=0;
@@ -82,6 +85,7 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         else if(ci<EC)lb[ci++]=ct[i];
     }
     if(ed.lc==0){ed.l[0]=es("");ed.lc=1;}
+    vga_writeln("[tau] entering editor...");
     memcpy(sv,(uint16_t*)0xB8000,sizeof(sv));
     if(serial_is_present()){
         serial_write("\033[2J\033[H");
