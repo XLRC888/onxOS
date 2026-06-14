@@ -59,9 +59,11 @@ char *strchr(const char *s, int c) {
 }
 char *itoa(int value, char *str, int base) {
     char *p = str;
-    int num = value;
+    if (base < 2 || base > 36) { *p = 0; return str; }
     if (value == 0) { *p++ = '0'; *p = 0; return str; }
-    if (base == 10 && value < 0) { *p++ = '-'; num = -value; }
+    unsigned int num;
+    if (base == 10 && value < 0) { *p++ = '-'; num = (unsigned int)(-value); }
+    else num = (unsigned int)value;
     char temp[32]; int i = 0;
     while (num > 0) {
         int d = num % base;

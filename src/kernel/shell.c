@@ -213,6 +213,7 @@ void shell_run(void) {
                 if(tc.lcp[0]&&tc.idx==0)strcpy(comp,tc.lcp);else strcpy(comp,tc.m[tc.idx-1]);
                 char nb[LB];strcpy(nb,tc.orig);
                 int ow=tc.wlen,nw=strlen(comp),rs=strlen(nb+tc.ws+ow);
+                if(tc.ws+nw+rs>=LB){rs=LB-tc.ws-nw-1;if(rs<0)rs=0;}
                 if(nw>ow){for(int i=rs;i>=0;i--)nb[tc.ws+nw+i]=nb[tc.ws+ow+i];}else for(int i=0;i<=rs;i++)nb[tc.ws+nw+i]=nb[tc.ws+ow+i];
                 for(int i=0;i<nw;i++)nb[tc.ws+i]=comp[i];
                 rl(nb,ol);lp=tc.ws+nw;ct(lp);tc_show();

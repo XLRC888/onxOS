@@ -50,6 +50,7 @@ void free(void *ptr) {
         if (curr->free && curr->next->free) {
             curr->size += BLOCK_SIZE + curr->next->size;
             curr->next = curr->next->next;
+            continue;
         }
         curr = curr->next;
     }

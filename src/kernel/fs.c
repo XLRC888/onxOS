@@ -441,6 +441,7 @@ int fs_seed_disk(void) { return fs_save_disk(); }
 static int dld(sector_read_t rd) {
     superblock_t sb;
     if (!rd(0, 1, &sb) || sb.magic != FS_MAGIC) return 0;
+    if (sb.node_count > (uint32_t)MAX_FILES || sb.node_count == 0) return 0;
     int count = (int)sb.node_count;
     if (count > MAX_FILES || count == 0) return 0;
     node_meta_t *metas = (node_meta_t *)malloc(sizeof(node_meta_t) * count);
@@ -458,7 +459,8 @@ static int dld(sector_read_t rd) {
         strncpy(loaded[i]->name, metas[i].name, MAX_NAME - 1); loaded[i]->name[MAX_NAME - 1] = 0;
         loaded[i]->type = (file_type_t)metas[i].type;
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
-            int sz = (int)metas[i].content_size; if (sz >= MAX_CONTENT) sz = MAX_CONTENT - 1;
+            uint32_t raw = metas[i].content_size;
+            int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
             memcpy(loaded[i]->content, buf + ATA_SECTOR_SIZE, sz); loaded[i]->content[sz] = 0;
         }
     }
@@ -482,6 +484,7 @@ int fs_load_from_memory(void *data) {
     superblock_t sb;
     memcpy(&sb, data, sizeof(sb));
     if (sb.magic != FS_MAGIC) return 0;
+    if (sb.node_count > (uint32_t)MAX_FILES || sb.node_count == 0) return 0;
     int count = (int)sb.node_count;
     if (count > MAX_FILES || count == 0) return 0;
     node_meta_t *metas = (node_meta_t *)malloc(sizeof(node_meta_t) * count);
@@ -497,7 +500,8 @@ int fs_load_from_memory(void *data) {
         strncpy(loaded[i]->name, metas[i].name, MAX_NAME - 1); loaded[i]->name[MAX_NAME - 1] = 0;
         loaded[i]->type = (file_type_t)metas[i].type;
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
-            int sz = (int)metas[i].content_size; if (sz >= MAX_CONTENT) sz = MAX_CONTENT - 1;
+            uint32_t raw = metas[i].content_size;
+            int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
             memcpy(loaded[i]->content, (uint8_t *)data + off + 512, sz); loaded[i]->content[sz] = 0;
         }
     }
