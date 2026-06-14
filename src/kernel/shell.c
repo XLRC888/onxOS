@@ -148,7 +148,7 @@ static void exec(const char *cmd) {
 void shell_init(void) { cd=fs_get_root(); hc=0; hi=-1; vga_scrollback_init(); }
 void shell_run(void) {
     const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
-    vga_set_fg(COLOR_LIGHT_GREEN);vga_write(on);vga_write(" v0.0.5");
+    vga_set_fg(COLOR_LIGHT_GREEN);vga_write(on);vga_write(" " ONX_VERSION);
     vga_set_fg(COLOR_LIGHT_GREY);vga_writeln(" - type 'help'");
     vga_writeln("");
     while(1){
