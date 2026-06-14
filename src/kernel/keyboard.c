@@ -53,7 +53,7 @@ static int mcs(const char *s, int ln) {
 static int ist(char ch) { return (ch>='A'&&ch<='Z')||(ch>='a'&&ch<='z')||ch=='~'; }
 static void sc(uint8_t s) {
     if (s == 0xF0) { bf = 1; return; }
-    if (bf) { bf = 0; return; }
+    if (bf) { bf = 0; ext = 0; return; }
     if (s == 0xE0) { ext = 1; return; }
     if (ext) {
         ext = 0;
@@ -84,7 +84,7 @@ static void sc(uint8_t s) {
     else if (s < sizeof(sa)) c = sa[s];
     else c = 0;
     if (caps && c >= 'a' && c <= 'z') c -= 32;
-    if (caps && c >= 'A' && c <= 'Z') c += 32;
+    else if (caps && c >= 'A' && c <= 'Z') c += 32;
     if (c) push(c);
 }
 static void cb(registers_t *r) { (void)r; if (inb(0x64) & 1) sc(inb(0x60)); }

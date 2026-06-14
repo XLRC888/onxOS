@@ -10,7 +10,7 @@
 #define HEAP_SIZE 0x100000
 extern uint32_t end_of_kernel;
 void kernel_early(unsigned int magic, unsigned int mb_info) {
-    (void)magic;
+    if (magic != 0x2BADB002) mb_info = 0;
     vga_init();
     serial_init();
     serial_write("start\n");

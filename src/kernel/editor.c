@@ -64,7 +64,6 @@ static char *es(const char *s) {
 void editor_open(fs_node_t *cwd, const char *filename) {
     uint16_t *vb=(uint16_t*)0xB8000;const char*ts="[tau] OK";
     for(int i=0;ts[i];i++)vb[i]=(uint16_t)ts[i]|((uint16_t)0x0F<<8);
-    while(1);
     char p[MAX_PATH];fs_to_absolute(p,cwd,filename);
     fs_node_t *nd=fs_resolve(p,cwd);
     if(!nd){
@@ -115,20 +114,22 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         else if(c==KEY_WORD_DELETE){
             if(ed.cc>0){char*ln=ed.l[ed.cr];int s=ed.cc-1;while(s>0&&!wc(ln[s]))s--;while(s>0&&wc(ln[s-1]))s--;
                 int ln2=ed.cc-s;for(int i=s;i+ln2<=EC;i++)ln[i]=ln[i+ln2];ed.cc=s;mod=1;}
-            else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);strcat(ed.l[ed.cr-1],ed.l[ed.cr]);
+            else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);int scl=strlen(ed.l[ed.cr]);int av=EC-pl;if(scl>av)scl=av;memcpy(ed.l[ed.cr-1]+pl,ed.l[ed.cr],scl);ed.l[ed.cr-1][pl+scl]=0;
                 for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
         }
         else if(c=='\n'||c=='\r'){
-            char*nl=es("");for(int i=ed.lc;i>ed.cr+1;i--)ed.l[i]=ed.l[i-1];
-            ed.l[ed.cr+1]=nl;if(ed.lc<EL-1)ed.lc++;ed.cr++;ed.cc=0;mod=1;
-            if(ed.cr-ed.tl>=VR)ed.tl++;
+            char*ln=ed.l[ed.cr];int l=strlen(ln);char*right=es(ln+ed.cc);
+            ln[ed.cc]=0;
+            if(ed.lc<EL-1){char*nl=es(ln);for(int i=ed.lc;i>ed.cr+1;i--)ed.l[i]=ed.l[i-1];
+            ed.l[ed.cr]=nl;ed.l[ed.cr+1]=right;ed.lc++;ed.cr++;ed.cc=0;mod=1;
+            if(ed.cr-ed.tl>=VR)ed.tl++;}
         }
         else if(c=='\b'){
             if(ed.cc>0){int l=strlen(ed.l[ed.cr]);for(int i=ed.cc-1;i<l;i++)ed.l[ed.cr][i]=ed.l[ed.cr][i+1];ed.cc--;mod=1;}
-            else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);strcat(ed.l[ed.cr-1],ed.l[ed.cr]);
+            else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);int scl=strlen(ed.l[ed.cr]);int av=EC-pl;if(scl>av)scl=av;memcpy(ed.l[ed.cr-1]+pl,ed.l[ed.cr],scl);ed.l[ed.cr-1][pl+scl]=0;
                 for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
         }
-        else if(c=='\t'){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l+4<EC){for(int i=l+4;i>ed.cc;i--)ln[i]=ln[i-4];
+        else if(c=='\t'){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l+4<EC){for(int i=l;i>=ed.cc;i--)ln[i+4]=ln[i];
             ln[ed.cc]=' ';ln[ed.cc+1]=' ';ln[ed.cc+2]=' ';ln[ed.cc+3]=' ';ed.cc+=4;mod=1;}}
         else if(c>=32&&c<127){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l<EC-1){for(int i=l+1;i>ed.cc;i--)ln[i]=ln[i-1];
             ln[ed.cc]=c;ed.cc++;mod=1;}}

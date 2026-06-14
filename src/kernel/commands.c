@@ -85,7 +85,7 @@ static int ps(const char *path, fs_node_t *cwd, fs_node_t **par, char *name) {
     if(ls>=0) {
         if(ls==0) *par=fs_get_root();
         else { char dp[MAX_PATH]; strncpy(dp,buf,ls); dp[ls]=0; *par=fs_resolve(dp,cwd); }
-        strcpy(name,buf+ls+1);
+        strncpy(name,buf+ls+1,MAX_NAME-1); name[MAX_NAME-1]=0;
     } else { *par=cwd; strcpy(name,buf); }
     return *par!=0;
 }
@@ -170,6 +170,7 @@ void cmd_mv(fs_node_t *cwd, const char *arg) {
     int idx=-1;for(int i=0;i<sp->child_count;i++)if(sp->children[i]==sn){idx=i;break;}
     if(idx<0)return;
     for(int i=idx;i<sp->child_count-1;i++)sp->children[i]=sp->children[i+1];sp->child_count--;
+    if(dp->child_count>=MAX_CHILDREN){vga_writeln("mv: dst full");return;}
     sn->parent=dp;dp->children[dp->child_count++]=sn;strcpy(sn->name,dn);
 }
 void cmd_stat(fs_node_t *cwd, const char *arg) {
@@ -280,7 +281,7 @@ void cmd_tail(fs_node_t *cwd, const char *arg) {
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tail: not a file");return;}
     const char *c=nd->content;int lines[260],lc=1;
     lines[0]=0;for(int i=0;c[i];i++){if(c[i]=='\n'){if(lc<260)lines[lc]=i+1;lc++;}}
-    int start=lc>n?lines[lc-n]:0;
+    if(n>=lc)n=lc;int start=lc>=1&&lc<=260?lines[lc-n]:0;
     for(int i=start;c[i];i++)vga_putchar(c[i]);
 }
 void cmd_wc(fs_node_t *cwd, const char *arg) {
@@ -331,7 +332,7 @@ void cmd_sort(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("sort: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("sort: not a file");return;}
-    const char *c=nd->content;char lines[256][256];int lc=0,ci=0;
+    const char *c=nd->content;char (*lines)[256]=(char(*)[256])malloc(256*256);if(!lines){vga_writeln("sort: oom");return;}int lc=0,ci=0;
     for(int i=0;c[i]&&lc<256;i++){
         if(c[i]=='\n'){lines[lc][ci]=0;lc++;ci=0;}
         else if(ci<255)lines[lc][ci++]=c[i];
@@ -343,6 +344,7 @@ void cmd_sort(fs_node_t *cwd, const char *arg) {
         strcpy(lines[j+1],tmp);
     }
     for(int i=0;i<lc;i++)vga_writeln(lines[i]);
+    free(lines);
 }
 void cmd_yes(const char *arg) {
     const char *p=arg;skip(&p);
