@@ -49,18 +49,20 @@ static void er(void) {
     itoa(ed.cc+1,bf,10);p=bf;while(*p)fb[i++]=(uint16_t)*p++|((uint16_t)tc<<8);
     vs();memcpy((uint16_t*)0xB8000,fb,sizeof(fb));
     vga_set_cursor(1+ed.cr-ed.tl,2+ed.cc);
-    serial_write("\033[H");
-    serial_write(" tau - ");serial_write(ed.fn);
-    if(ed.dirty)serial_write(" [Modified]");
-    serial_write("  -- NORMAL --  \r\n");
-    for(int y=0;y<VR;y++){
-        int li=ed.tl+y;
-        if(li>=ed.lc){serial_write("~\r\n");continue;}
-        serial_write("  ");serial_write(ed.l[li]);serial_write("\r\n");
+    if(serial_is_present()){
+        serial_write("\033[H");
+        serial_write(" tau - ");serial_write(ed.fn);
+        if(ed.dirty)serial_write(" [Modified]");
+        serial_write("  -- NORMAL --  \r\n");
+        for(int y=0;y<VR;y++){
+            int li=ed.tl+y;
+            if(li>=ed.lc){serial_write("~\r\n");continue;}
+            serial_write("  ");serial_write(ed.l[li]);serial_write("\r\n");
+        }
+        serial_write(" Ln ");itoa(ed.cr+1,bf,10);serial_write(bf);
+        serial_write(", Col ");itoa(ed.cc+1,bf,10);serial_write(bf);
+        serial_write("  \r\n");
     }
-    serial_write(" Ln ");itoa(ed.cr+1,bf,10);serial_write(bf);
-    serial_write(", Col ");itoa(ed.cc+1,bf,10);serial_write(bf);
-    serial_write("  \r\n");
 }
 static char *es(const char *s) {
     char *c=(char*)malloc(EC+1);if(!c){char*e=(char*)malloc(1);if(e)e[0]=0;return e?e:(char*)"";}
