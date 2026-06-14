@@ -29,6 +29,7 @@ static int serial_is_transmit_empty(void) {
     return inb(COM1 + 5) & 0x20;
 }
 void serial_putchar(char c) {
+    if (!serial_present) return;
     if (c == '\n') {
         while (!serial_is_transmit_empty());
         outb(COM1, '\r');
