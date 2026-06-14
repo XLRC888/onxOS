@@ -30,23 +30,33 @@ static int serial_is_transmit_empty(void) {
 }
 void serial_putchar(char c) {
     if (!serial_present) return;
+    int w = 0;
     if (c == '\n') {
-        while (!serial_is_transmit_empty());
+        while (!serial_is_transmit_empty() && w < 100000) w++;
+        if (w >= 100000) return;
         outb(COM1, '\r');
-        while (!serial_is_transmit_empty());
+        w = 0;
+        while (!serial_is_transmit_empty() && w < 100000) w++;
+        if (w >= 100000) return;
         outb(COM1, '\n');
         return;
     }
     if (c == '\b') {
-        while (!serial_is_transmit_empty());
+        while (!serial_is_transmit_empty() && w < 100000) w++;
+        if (w >= 100000) return;
         outb(COM1, '\b');
-        while (!serial_is_transmit_empty());
+        w = 0;
+        while (!serial_is_transmit_empty() && w < 100000) w++;
+        if (w >= 100000) return;
         outb(COM1, ' ');
-        while (!serial_is_transmit_empty());
+        w = 0;
+        while (!serial_is_transmit_empty() && w < 100000) w++;
+        if (w >= 100000) return;
         outb(COM1, '\b');
         return;
     }
-    while (!serial_is_transmit_empty());
+    while (!serial_is_transmit_empty() && w < 100000) w++;
+    if (w >= 100000) return;
     outb(COM1, c);
 }
 void serial_write(const char *str) {
