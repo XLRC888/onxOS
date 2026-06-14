@@ -160,15 +160,23 @@ void shell_run(void) {
     if (fs_get_boot_media()) { vga_set_fg(COLOR_LIGHT_RED); vga_writeln("files will not be saved in onxIM mode"); vga_set_fg(COLOR_LIGHT_GREY); }
     vga_writeln("");
     while(1){
-        vga_set_cursor(vga_get_cursor_row(),0);
-        const char *prompt=gp();vga_write(prompt);
-        pr=vga_get_cursor_row();pc=vga_get_cursor_col();
+        int rw=vga_get_cursor_row(),cl=0;
+        const char *prompt=gp();
+        uint16_t *vr=(uint16_t*)0xB8000;
+        uint8_t at=COLOR_LIGHT_GREY|(COLOR_BLACK<<4);
+        for(const char *p=prompt;*p;p++){
+            vr[rw*80+cl]=(uint16_t)(*p)|((uint16_t)at<<8);
+            cl++;
+        }
+        vga_set_cursor(rw,cl);
+        if(serial_is_present())serial_write(prompt);
+        pr=rw;pc=cl;
         lp=0;lb[0]=0;tc.active=0;int done=0;const char *saved=0;
         while(!done){char c;if(!keyboard_getchar(&c))continue;
             if(c==KEY_PGUP){if(tc.active)tc_hide();tc.active=0;vga_scrollback_up();continue;}
             if(c==KEY_PGDN){if(tc.active)tc_hide();tc.active=0;vga_scrollback_down();if(!vga_in_scrollback()){vga_set_cursor(pr,pc+lp);}continue;}
             if(vga_in_scrollback()){vga_scrollback_exit();vga_set_cursor(pr,pc+lp);}
-            if(c=='\n'||c=='\r'){if(tc.active){tc_hide();tc.active=0;}lb[strlen(lb)]=0;vga_putchar('\n');done=1;}
+            if(c=='\n'||c=='\r'){if(tc.active){tc_hide();tc.active=0;}lb[strlen(lb)]=0;vga_putchar_raw('\n');done=1;}
             else if(c=='\b'||c==KEY_DELETE){if(tc.active)tc_hide();tc.active=0;if(lp>0){int ol=strlen(lb);int l2=ol;for(int i=lp-1;i<l2;i++)lb[i]=lb[i+1];lp--;int sp=lp;rl(lb,ol);lp=sp;ct(lp);}}
             else if(c==KEY_LEFT){if(tc.active)tc_hide();tc.active=0;if(lp>0){lp--;ct(lp);}}
             else if(c==KEY_RIGHT){if(tc.active)tc_hide();tc.active=0;int l=strlen(lb);if(lp<l){lp++;ct(lp);}}
@@ -209,7 +217,7 @@ void shell_run(void) {
                 for(int i=0;i<nw;i++)nb[tc.ws+i]=comp[i];
                 rl(nb,ol);lp=tc.ws+nw;ct(lp);tc_show();
             }
-            else if(c>=32&&c<127&&lp<LB-1){if(tc.active)tc_hide();tc.active=0;int l=strlen(lb);if(lp<l){int ol=strlen(lb);for(int i=l;i>lp;i--)lb[i]=lb[i-1];lb[l+1]=0;lb[lp]=c;lp++;int sp=lp;rl(lb,ol);lp=sp;ct(lp);}else{lb[lp]=c;lb[lp+1]=0;lp++;vga_putchar(c);}}
+            else if(c>=32&&c<127&&lp<LB-1){if(tc.active)tc_hide();tc.active=0;int l=strlen(lb);if(lp<l){int ol=strlen(lb);for(int i=l;i>lp;i--)lb[i]=lb[i-1];lb[l+1]=0;lb[lp]=c;lp++;int sp=lp;rl(lb,ol);lp=sp;ct(lp);}else{lb[lp]=c;lb[lp+1]=0;lp++;vga_putchar_raw(c);}}
         }
         if(strlen(lb)>0){ha(lb);exec(lb);}
         hi=hc;
