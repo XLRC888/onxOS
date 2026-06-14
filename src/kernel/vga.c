@@ -110,6 +110,7 @@ void vga_hw_reset(void) {
     for (int i = 0; i < VW * VH * 2; i += 2) { vga[i] = ' '; vga[i + 1] = 0x07; }
 }
 void vga_init(void) {
+    vga_hw_reset();
     memcpy(grub_save, vb, VW * VH * 2);
     vga_clear(); uc();
 }
