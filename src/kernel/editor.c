@@ -62,6 +62,7 @@ static char *es(const char *s) {
     strncpy(c,s,EC);c[EC]=0;return c;
 }
 void editor_open(fs_node_t *cwd, const char *filename) {
+    ((uint16_t*)0xB8000)[0]=(uint16_t)'X'|((uint16_t)0x0F<<8);
     vga_writeln("[tau] resolving...");
     char p[MAX_PATH];fs_to_absolute(p,cwd,filename);
     fs_node_t *nd=fs_resolve(p,cwd);
