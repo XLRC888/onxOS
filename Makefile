@@ -93,7 +93,7 @@ $(ISO): $(BUILD_DIR)/onxos.elf
 	rm -rf $(ISODIR) $(ISO)
 	mkdir -p $(ISODIR)/boot/grub
 	python3 tools/patch_aout.py $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
-	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n}\n' > $(ISODIR)/boot/grub/grub.cfg
+	printf 'set timeout=5\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"
 	@ls -lh $(ISO)

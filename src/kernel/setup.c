@@ -23,7 +23,7 @@ static void wait_key(void) {
 }
 static void dump_status(void) {
     extern uint32_t end_of_kernel;
-    unsigned int sz = (unsigned int)&end_of_kernel - 0x100000;
+    unsigned int sz = (unsigned int)&end_of_kernel - 0x200000;
     vga_write("kernel: ");vga_write_dec(sz);vga_write(" bytes");
     vga_write(" (");vga_write_dec(KERN_SECT(sz));vga_writeln(" sectors)");
     vga_write("bootblob: ");vga_write_dec(build_bootblob_bin_len);vga_writeln(" bytes");
@@ -54,7 +54,7 @@ static int do_install(int upd) {
     vga_write(upd?"updating onxOS...":"installing onxOS to first HDD...");
     vga_writeln("");
     if (!fs_present()) { vga_writeln("no disk detected"); return 0; }
-    unsigned int ksz = (unsigned int)&end_of_kernel - 0x100000;
+    unsigned int ksz = (unsigned int)&end_of_kernel - 0x200000;
     unsigned int ks = KERN_SECT(ksz);
     uint32_t dl = BOOT_BLOB_SECT + ks;
     unsigned char *buf = (unsigned char *)malloc(512);
@@ -66,7 +66,7 @@ static int do_install(int upd) {
     if (!fs_write_sectors(1, 5, build_bootblob_bin + 512)) { free(buf); vga_writeln("FAIL"); return 0; }
     vga_writeln("ok");
     vga_write("kernel: writing ");vga_write_dec(ks);vga_write(" sectors...");
-    if (!fs_write_sectors(BOOT_BLOB_SECT, ks, (void *)0x100000)) { free(buf); vga_writeln("FAIL"); return 0; }
+    if (!fs_write_sectors(BOOT_BLOB_SECT, ks, (void *)0x200000)) { free(buf); vga_writeln("FAIL"); return 0; }
     vga_writeln("ok");
     if (!upd) {
         vga_write("partition table: setting up...");
