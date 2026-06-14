@@ -73,7 +73,6 @@ $(BUILD_DIR)/setup_final.o: $(SRC_DIR)/setup.c $(BOOTBLOB_H)
 
 $(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_final.o
 	$(LD) $(LDFLAGS) -o $@ $^
-	strip --strip-all -R .comment -R .note $@ 2>/dev/null || true
 
 $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
 	objcopy -O binary $< $@
