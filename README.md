@@ -30,6 +30,14 @@ Download the latest ISO from Releases, or build it yourself.
 That boots it in QEMU with a 256MB virtual disk attached. Ctrl+A then X to
 exit. Connect via serial: -serial stdio.
 
+To install to the HDD from the live ISO: boot, run `setup`, then `exit`. The
+bootloader writes to the first 6 sectors, kernel to the next 122, and the
+filesystem starts at LBA 128. After that you can boot the disk directly:
+
+```
+  make run-hdd
+```
+
 ### BUILD REQUIREMENTS
 
   - gcc (i686 cross-compiler or native with -m32)
@@ -88,6 +96,7 @@ commands. You get a filesystem, a text editor, and a cow.
     hex <f>          hex dump
     tree [dir]       display directory tree
     tau <f>          text editor (esc to exit)
+    setup            install onxOS to this disk (writes bootloader + kernel + filesystem)
     cowsay [msg]     ascii cow with a message
     clear/ver/reboot clear screen / version / reboot
     help             you are here

@@ -4,7 +4,7 @@ LD = ld
 
 CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -fno-exceptions -Os -fno-builtin -Wall -Wextra -Wno-unused-variable \
-         -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel \
+         -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel -I build \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
          -fno-asynchronous-unwind-tables -fmerge-all-constants
 LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
@@ -32,8 +32,18 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm | $(BUILD_DIR)
 $(BOOT_OBJ): src/boot/boot.asm | $(BUILD_DIR)
 	$(AS) -f elf32 $< -o $@
 
+$(BUILD_DIR)/bootloader.bin: src/boot/bootloader.asm | $(BUILD_DIR)
+	$(AS) -f bin $< -o $@
+
+$(BUILD_DIR)/bootblob.h: $(BUILD_DIR)/bootloader.bin
+	python3 tools/patch_boot.py $< --header $@
+
+$(BUILD_DIR)/setup.o: src/kernel/setup.c $(BUILD_DIR)/bootblob.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^
+	python3 tools/patch_boot.py $(BUILD_DIR)/bootloader.bin --verify $@
 
 $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
 	objcopy -O binary $< $@
@@ -64,6 +74,7 @@ $(ISO): $(BUILD_DIR)/onxos.elf | $(BUILD_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f src/kernel/bootblob.h
 
 HDD_QEMU = $(BUILD_DIR)/hdd_qemu.img
 
@@ -74,4 +85,7 @@ $(HDD_QEMU): | $(BUILD_DIR)
 run: $(ISO) $(HDD_QEMU)
 	qemu-system-i386 -boot d -cdrom $(ISO) -drive file=$(HDD_QEMU),format=raw -m 64 -serial stdio -monitor none -nographic
 
-.PHONY: all iso clean run
+run-hdd: $(HDD_QEMU)
+	qemu-system-i386 -drive file=$(HDD_QEMU),format=raw -m 64 -serial stdio -monitor none -nographic
+
+.PHONY: all iso clean run run-hdd
