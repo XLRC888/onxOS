@@ -424,4 +424,3 @@ void cmd_uniq(fs_node_t *cwd, const char *arg) {
         }else if(ci<255)cur[ci++]=c[i];
     }
 }
-void __attribute__((weak)) cmd_setup(fs_node_t *cwd) { (void)cwd; }

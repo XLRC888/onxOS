@@ -9,9 +9,26 @@
 #include "string.h"
 #define HEAP_SIZE 0x100000
 extern uint32_t end_of_kernel;
-void kernel_early(unsigned int magic, unsigned int mb_info) {
-    int is_mb2 = (magic == 0x36d76289);
-    if (magic != 0x2BADB002 && !is_mb2) mb_info = 0;
+
+static void parse_mb2_tags(uint32_t mbi_addr, uint32_t *mod_start, uint32_t *mod_end) {
+    *mod_start = 0; *mod_end = 0;
+    uint32_t total_size = *(uint32_t *)mbi_addr;
+    uint32_t *tag = (uint32_t *)(mbi_addr + 8);
+    while ((uint32_t)tag < mbi_addr + total_size) {
+        if (tag[0] == 3) {
+            *mod_start = tag[2];
+            *mod_end = tag[3];
+        }
+        if (tag[0] == 0) break;
+        uint32_t sz = tag[1];
+        tag = (uint32_t *)((uint8_t *)tag + (sz < 8 ? 8 : (sz + 7) & ~7));
+    }
+}
+
+void kernel_early(unsigned int magic, unsigned int mbi_addr) {
+    if (magic != 0x36d76289) mbi_addr = 0;
+    uint32_t mod_start = 0, mod_end = 0;
+    if (mbi_addr) parse_mb2_tags(mbi_addr, &mod_start, &mod_end);
     vga_init();
     serial_init();
     serial_write("start\n");
@@ -22,35 +39,9 @@ void kernel_early(unsigned int magic, unsigned int mb_info) {
     keyboard_init();
     __asm__ volatile("sti");
     serial_write("kbd ok\n");
-    unsigned int mod_start = 0, mod_size = 0;
-    if (mb_info) {
-        if (is_mb2) {
-            unsigned int tsz = *(unsigned int *)mb_info;
-            unsigned int *tag = (unsigned int *)(mb_info + 8);
-            while ((unsigned int)tag < mb_info + tsz) {
-                if (tag[0] == 3) {
-                    mod_start = tag[2];
-                    mod_size = tag[3] - mod_start;
-                    break;
-                }
-                if (tag[0] == 0) break;
-                tag = (unsigned int *)((uint8_t *)tag + (tag[1] < 8 ? 8 : (tag[1] + 7) & ~7));
-            }
-        } else {
-            unsigned int *info = (unsigned int *)mb_info;
-            if (info[0] & (1 << 3)) {
-                unsigned int mc = info[5];
-                if (mc > 0) {
-                    unsigned int *mod = (unsigned int *)info[6];
-                    mod_start = mod[0];
-                    mod_size = mod[1] - mod_start;
-                }
-            }
-        }
-    }
     uint32_t heap_start = (uint32_t)&end_of_kernel + 0x1000;
-    if (mod_size > 0 && mod_start + mod_size + 0x1000 > heap_start)
-        heap_start = mod_start + mod_size + 0x1000;
+    if (mod_end && mod_end + 0x1000 > heap_start)
+        heap_start = mod_end + 0x1000;
     memory_init((void *)heap_start, HEAP_SIZE);
     fs_init();
     int loaded = 0;
@@ -60,22 +51,15 @@ void kernel_early(unsigned int magic, unsigned int mb_info) {
     } else {
         serial_write("fs: no disk\n");
     }
-    if (!loaded && fs_ata_present() && fs_seed_disk()) {
-        loaded = 1;
-        serial_write("fs: auto seed ok\n");
-        fs_load_disk();
-    }
-    if (!loaded && mod_size >= 512 && fs_load_from_memory((void *)mod_start)) {
+    if (!loaded && mod_end > mod_start && fs_load_from_memory((void *)mod_start)) {
         loaded = 1;
         serial_write("fs: module ok\n");
-        if (fs_save_disk()) serial_write("fs: seed ok\n");
-        else serial_write("fs: seed fail\n");
     }
-    fs_set_boot_media(mod_size >= 512);
     shell_init();
-    vga_write(fs_get_boot_media()?"onxIM":"onxOS");vga_writeln(" ready.");
+    vga_write("onxOS");vga_writeln(" ready.");
     serial_write("shell ready\n");
 }
+
 void kernel_main(void) {
     serial_write("shell run\n");
     shell_run();
