@@ -18,6 +18,14 @@ section .text
 global _start:function (_start.end - _start)
 _start:
     mov esp, stack_top
+    extern start_of_bss
+    extern end_of_kernel
+    mov edi, start_of_bss
+    mov ecx, end_of_kernel
+    sub ecx, edi
+    xor eax, eax
+    cld
+    rep stosb
     push ebx
     push eax
     cli

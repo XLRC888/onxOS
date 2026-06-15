@@ -21,6 +21,7 @@ SECTIONS
     }
 
     .bss : {
+        start_of_bss = .;
         *(COMMON)
         *(.bss)
         *(.bss*)
