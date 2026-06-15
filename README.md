@@ -28,20 +28,7 @@ Download the latest ISO from Releases, or build it yourself.
 
 
 That boots it in QEMU with a 256MB virtual disk attached. Ctrl+A then X to
-exit. The ISO boots as onxIM (installation media) which can install to a real
-hard drive via the setup command. Once installed, it boots directly as onxOS.
-
-### onxIM vs onxOS
-
-The OS behaves slightly different depending on where it boots from:
-
-  onxIM : Booted from ISO or USB. The setup command is available for
-          installing to hard drive. Files will not be saved.
-
-  onxOS : Booted from hard drive. The filesystem loads from disk and saves
-          on exit.
-
-Check which mode you are in with ver or uname.
+exit. Connect via serial: -serial stdio.
 
 ### BUILD REQUIREMENTS
 
@@ -198,28 +185,10 @@ idea of a good time is a shell and a filesystem and nothing else, this fits.
 The persistent filesystem saves to disk when you type exit. Reboot and your
 files are still there. No fsck, no journaling, no overhead. It just works.
 
-### INSTALL TO HARD DRIVE
-
-Boot the ISO (onxIM mode), run setup, choose option 2. This writes the
-kernel and bootloader to the first hard drive at sector level. You can also
-use install.sh with a target device:
-
-  
-```
-sudo ./install.sh /dev/sdX
-```
-
-
-This creates a partition layout, installs GRUB, and seeds the data partition.
-Boot from the drive and onxOS starts directly.
-
-For QEMU testing, make run creates a 256MB disk image and boots from it.
-
 ### EDITOR
 
 tau is a basic text editor built into the shell. Open it with:
 
-  
 ```
 tau filename.txt
 ```
