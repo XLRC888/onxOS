@@ -11,67 +11,28 @@ LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
 
 SRC_DIR = src/kernel
 BUILD_DIR = build
-GEN_DIR = $(BUILD_DIR)/gen
 
 C_SRCS = $(wildcard $(SRC_DIR)/*.c)
-ASM_SRCS = $(wildcard $(SRC_DIR)/*.asm)
+ASM_SRCS = $(SRC_DIR)/gdt_flush.asm $(SRC_DIR)/idt_load.asm $(SRC_DIR)/isr_entry.asm
 C_OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SRCS))
 ASM_OBJS = $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/%.o, $(ASM_SRCS))
 BOOT_OBJ = $(BUILD_DIR)/boot.o
-BOOTBLOB = $(BUILD_DIR)/bootblob.bin
-BOOTBLOB_H = $(GEN_DIR)/bootblob_data.h
-SIZE_MK = $(GEN_DIR)/size.mk
-PRE_KERN = $(BUILD_DIR)/onxos.pre.bin
-C_OBJS_NO_SETUP = $(filter-out $(BUILD_DIR)/setup.o, $(C_OBJS))
 
 all: $(BUILD_DIR)/onxos.bin
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/kernel.h
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm | $(BUILD_DIR)
 	$(AS) -f elf32 $< -o $@
 
-$(BUILD_DIR)/boot.o: src/boot/boot.asm
+$(BOOT_OBJ): src/boot/boot.asm | $(BUILD_DIR)
 	$(AS) -f elf32 $< -o $@
 
-$(GEN_DIR)/dummy/bootblob_data.h:
-	mkdir -p $(GEN_DIR)/dummy
-	printf 'unsigned char build_bootblob_bin[]={1,' > $@; \
-	for i in $$(seq 3071); do printf '0,' >> $@; done; \
-	printf '};\nunsigned int build_bootblob_bin_len=3072;\n' >> $@
-
-$(BUILD_DIR)/setup_pre.o: $(SRC_DIR)/setup.c $(GEN_DIR)/dummy/bootblob_data.h
-	$(CC) $(CFLAGS) -I$(GEN_DIR)/dummy -c $< -o $@
-
-$(PRE_KERN): $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_pre.o
-	$(LD) $(LDFLAGS) -o $@ $^
-	strip --strip-all -R .comment -R .note $@ 2>/dev/null || true
-
-$(SIZE_MK): $(PRE_KERN)
-	mkdir -p $(GEN_DIR)
-	objcopy -O binary $(PRE_KERN) /tmp/_kflat 2>/dev/null; \
-	F=$$(wc -c < /tmp/_kflat | awk '{print $$1}'); \
-	S=$$(( (F + 511) / 512 )); \
-	FS=$$(printf '%X' $$F); \
-	MS=$$(readelf -l $(PRE_KERN) | awk '/LOAD/{addr=$$3; sz=$$6} END{print addr, sz}' | python3 -c "import sys; a,s=sys.stdin.read().split(); print('%X' % (int(a,16)+int(s,16)-0x100000))"); \
-	echo "KERN_SECT=$$S" > $@; \
-	echo "KERN_FSZ=0x$$FS" >> $@; \
-	echo "BSS_SZ=0x$$MS" >> $@
-
--include $(SIZE_MK)
-
-$(BOOTBLOB): src/boot/bootloader.asm $(SIZE_MK)
-	$(AS) -f bin -DKERN_SECT=$(KERN_SECT) -DKERN_FSZ=$(KERN_FSZ) -DBSS_SZ=$(BSS_SZ) $< -o $@
-
-$(BOOTBLOB_H): $(BOOTBLOB)
-	mkdir -p $(GEN_DIR)
-	xxd -i $< > $@
-
-$(BUILD_DIR)/setup_final.o: $(SRC_DIR)/setup.c $(BOOTBLOB_H)
-	$(CC) $(CFLAGS) -I$(GEN_DIR) -c $< -o $@
-
-$(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS_NO_SETUP) $(BUILD_DIR)/setup_final.o
+$(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
@@ -89,30 +50,28 @@ $(DISK):
 
 iso: $(ISO)
 
-$(ISO): $(BUILD_DIR)/onxos.elf
+$(ISO): $(BUILD_DIR)/onxos.elf | $(BUILD_DIR)
 	rm -rf $(ISODIR) $(ISO)
 	mkdir -p $(ISODIR)/boot/grub
-	python3 tools/patch_aout.py $(BUILD_DIR)/onxos.elf $(ISODIR)/boot/onxos.bin
-	printf 'set timeout=5\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot /boot/onxos.bin\n\tboot\n}\n' > $(ISODIR)/boot/grub/grub.cfg
+	cp $< $(ISODIR)/boot/onxos.bin
+	if [ -f $(DISK) ]; then cp $(DISK) $(ISODIR)/boot/; fi
+	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot2 /boot/onxos.bin\n' > $(ISODIR)/boot/grub/grub.cfg
+	if [ -f $(DISK) ]; then printf '\tmodule2 /boot/disk.img\n' >> $(ISODIR)/boot/grub/grub.cfg; fi
+	printf '\tboot\n}\n' >> $(ISODIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR) 2>/dev/null
 	@echo "Built: $(ISO)"
 	@ls -lh $(ISO)
 
 clean:
-	rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/onxos*.bin $(BUILD_DIR)/disk.img $(ISO) $(BOOTBLOB)
-	rm -rf $(ISODIR) $(GEN_DIR)
-	rm -f qemu.log
+	rm -rf $(BUILD_DIR)
 
 HDD_QEMU = $(BUILD_DIR)/hdd_qemu.img
 
-$(HDD_QEMU):
+$(HDD_QEMU): | $(BUILD_DIR)
 	dd if=/dev/zero of=$@ bs=1M count=256 2>/dev/null
 	@echo "Created: $@"
 
 run: $(ISO) $(HDD_QEMU)
-	qemu-system-i386 -boot d -cdrom $(ISO) -drive file=$(HDD_QEMU),format=raw -m 64 -nographic 2>qemu.log
+	qemu-system-i386 -boot d -cdrom $(ISO) -drive file=$(HDD_QEMU),format=raw -m 64 -serial stdio -monitor none -nographic
 
-run-hdd: $(HDD_QEMU)
-	qemu-system-i386 -drive file=$(HDD_QEMU),format=raw -m 64 -serial file:qemu.log &
-
-.PHONY: all iso clean run run-hdd
+.PHONY: all iso clean run

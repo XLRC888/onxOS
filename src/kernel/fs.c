@@ -21,16 +21,72 @@ typedef struct {
     uint8_t pad[132];
 } __attribute__((packed)) node_meta_t;
 static fs_node_t root_node;
-static int ata_disk = 0;
 static uint16_t ata_base = 0;
 static uint16_t ata_base2 = 0;
 static uint32_t data_lba = 0;
 static int boot_media = 0;
+static int ata_ok = 0;
+
 static uint32_t pci_read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off) {
     uint32_t addr = (uint32_t)0x80000000 | ((uint32_t)bus << 16) | ((uint32_t)dev << 11) | ((uint32_t)func << 8) | (off & 0xFC);
     outl(0xCF8, addr);
     return inl(0xCFC);
 }
+
+static int ata_poll(uint16_t base) {
+    for (int i = 0; i < 500000; i++) {
+        uint8_t st = inb(base + 7);
+        if (st & 1) return 0;
+        if (!(st & 0x80) && (st & 8)) return 1;
+        __asm__ volatile ("pause");
+    }
+    return 0;
+}
+
+static int ata_flush(uint16_t base) {
+    outb(base + 7, 0xE7);
+    for (int i = 0; i < 500000; i++) {
+        uint8_t st = inb(base + 7);
+        if (!(st & 0x80) && (st & 0x40)) return 1;
+        if (st & 1) return 0;
+    }
+    return 0;
+}
+
+static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base) {
+    if (!base) return 0;
+    outb(base + 6, 0xE0 | ((lba >> 24) & 0x0F));
+    outb(base + 2, cnt);
+    outb(base + 3, lba & 0xFF);
+    outb(base + 4, (lba >> 8) & 0xFF);
+    outb(base + 5, (lba >> 16) & 0xFF);
+    outb(base + 7, wr ? 0x30 : 0x20);
+    uint16_t *w = (uint16_t *)buf;
+    for (int s = 0; s < cnt; s++) {
+        if (!ata_poll(base)) return 0;
+        if (wr) { for (int i = 0; i < 256; i++) outw(base, w[i]); w += 256; }
+        else { for (int i = 0; i < 256; i++) w[i] = inw(base); w += 256; }
+    }
+    if (wr && !ata_flush(base)) return 0;
+    return 1;
+}
+
+static int ata_rd(uint32_t lba, uint8_t cnt, void *b) {
+    uint32_t dl = data_lba;
+    return (ata_base && ata_rw(0, lba + dl, cnt, b, ata_base)) ||
+           (ata_base2 && ata_rw(0, lba + dl, cnt, b, ata_base2)) ||
+           ata_rw(0, lba + dl, cnt, b, 0x1F0) ||
+           ata_rw(0, lba + dl, cnt, b, 0x170);
+}
+
+static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) {
+    uint32_t dl = data_lba;
+    return (ata_base && ata_rw(1, lba + dl, cnt, (void *)b, ata_base)) ||
+           (ata_base2 && ata_rw(1, lba + dl, cnt, (void *)b, ata_base2)) ||
+           ata_rw(1, lba + dl, cnt, (void *)b, 0x1F0) ||
+           ata_rw(1, lba + dl, cnt, (void *)b, 0x170);
+}
+
 static int ata_init(void) {
     uint16_t b1 = 0, b2 = 0;
     for (int d = 0; d < 32; d++) for (int f = 0; f < 8; f++) {
@@ -52,185 +108,27 @@ static int ata_init(void) {
     if (!b1) b1 = 0x1F0;
     if (!b2) b2 = 0x170;
     uint8_t st1 = inb(b1 + 7);
-    if (st1 != 0xFF && st1 != 0) {
+    if (st1 != 0xFF) {
         int clean = 0;
-        for (int i = 0; i < 100000; i++) { st1 = inb(b1 + 7); if (!(st1 & 0x80)) { clean = 1; break; } }
-        if (!clean || st1 == 0xFF || st1 == 0) st1 = 0xFF;
+        for (int i = 0; i < 100000; i++) { uint8_t s = inb(b1 + 7); if (!(s & 0x80)) { clean = 1; break; } }
+        if (clean) ata_base = b1;
     }
     uint8_t st2 = inb(b2 + 7);
-    if (st2 != 0xFF && st2 != 0) {
+    if (st2 != 0xFF) {
         int clean = 0;
-        for (int i = 0; i < 100000; i++) { st2 = inb(b2 + 7); if (!(st2 & 0x80)) { clean = 1; break; } }
-        if (!clean || st2 == 0xFF || st2 == 0) st2 = 0xFF;
+        for (int i = 0; i < 100000; i++) { uint8_t s = inb(b2 + 7); if (!(s & 0x80)) { clean = 1; break; } }
+        if (clean) ata_base2 = b2;
     }
-    if (!(st1 == 0xFF || st1 == 0)) ata_base = b1;
-    if (!(st2 == 0xFF || st2 == 0)) ata_base2 = b2;
-    ata_disk = ata_base || ata_base2;
-    return ata_disk;
-}
-static int ata_poll(uint16_t base) {
-    for (int i = 0; i < 500000; i++) {
-        uint8_t st = inb(base + 7);
-        if (st & 1) return 0;
-        if (!(st & 0x80) && (st & 8)) return 1;
-        __asm__ volatile ("pause");
-    }
-    return 0;
-}
-static int ata_flush(uint16_t base) {
-    outb(base + 7, 0xE7);
-    for (int i = 0; i < 500000; i++) {
-        uint8_t st = inb(base + 7);
-        if (!(st & 0x80) && (st & 0x40)) return 1;
-        if (st & 1) return 0;
-    }
-    return 0;
-}
-static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base) {
-    if (!base) return 0;
-    outb(base + 6, 0xE0 | ((lba >> 24) & 0x0F));
-    outb(base + 2, cnt);
-    outb(base + 3, lba & 0xFF);
-    outb(base + 4, (lba >> 8) & 0xFF);
-    outb(base + 5, (lba >> 16) & 0xFF);
-    outb(base + 7, wr ? 0x30 : 0x20);
-    uint16_t *w = (uint16_t *)buf;
-    for (int s = 0; s < cnt; s++) {
-        if (!ata_poll(base)) return 0;
-        if (wr) { for (int i = 0; i < 256; i++) outw(base, w[i]); w += 256; }
-        else { for (int i = 0; i < 256; i++) w[i] = inw(base); w += 256; }
-    }
-    if (wr && !ata_flush(base)) return 0;
-    return 1;
-}
-static int ahci_ok = 0;
-static int ahci_rw(int wr, uint32_t lba, uint8_t cnt, void *buf);
-static int ata_rd(uint32_t lba, uint8_t cnt, void *b) { uint32_t dl = data_lba; return (ahci_ok && ahci_rw(0, lba + dl, cnt, b)) || (ata_base && ata_rw(0, lba + dl, cnt, b, ata_base)) || (ata_base2 && ata_rw(0, lba + dl, cnt, b, ata_base2)) || ata_rw(0, lba + dl, cnt, b, 0x1F0) || ata_rw(0, lba + dl, cnt, b, 0x170); }
-static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) { uint32_t dl = data_lba; return (ahci_ok && ahci_rw(1, lba + dl, cnt, (void *)b)) || (ata_base && ata_rw(1, lba + dl, cnt, (void *)b, ata_base)) || (ata_base2 && ata_rw(1, lba + dl, cnt, (void *)b, ata_base2)) || ata_rw(1, lba + dl, cnt, (void *)b, 0x1F0) || ata_rw(1, lba + dl, cnt, (void *)b, 0x170); }
-static char ahci_pool[4096];
-static uint32_t ahci_cl_pa, ahci_fis_pa, ahci_ct_pa;
-static volatile void *ahci_abar = 0;
-static int ahci_port = -1;
-
-#define A_POR_CMD 0x18
-#define A_POR_TFD 0x20
-#define A_POR_SST 0x28
-#define A_POR_SER 0x30
-#define A_POR_CI 0x38
-#define A_POR_SF 0x3C
-
-static void ahci_setup(void) {
-    uint32_t b = (uint32_t)ahci_pool;
-    ahci_cl_pa = (b + 1023) & ~1023;
-    ahci_fis_pa = (ahci_cl_pa + 1024 + 255) & ~255;
-    ahci_ct_pa = (ahci_fis_pa + 256 + 127) & ~127;
-}
-
-static uint32_t apr(int off) {
-    return *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + ahci_port * 0x80 + off);
-}
-
-static void apw(int off, uint32_t v) {
-    *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + ahci_port * 0x80 + off) = v;
-}
-
-static int ahci_wait(volatile uint32_t *r, uint32_t clr, uint32_t set) {
-    for (int i = 0; i < 2000000; i++) { uint32_t v = *r; if (clr && !(v & clr)) return 1; if (set && (v & set)) return 1; }
-    return 0;
-}
-
-static int ahci_rw(int wr, uint32_t lba, uint8_t cnt, void *buf) {
-    if (ahci_port < 0) return 0;
-    uint8_t *cfis = (uint8_t *)ahci_ct_pa;
-    for (int i = 0; i < 64; i++) cfis[i] = 0;
-    cfis[0] = 0x27; cfis[1] = 0x80;
-    cfis[2] = wr ? 0xCA : 0xC8;
-    cfis[4] = (uint8_t)(lba);
-    cfis[5] = (uint8_t)(lba >> 8);
-    cfis[6] = (uint8_t)(lba >> 16);
-    cfis[7] = 0xE0 | (uint8_t)((lba >> 24) & 0x0F);
-    cfis[12] = cnt;
-    volatile uint32_t *ch = (volatile uint32_t *)ahci_cl_pa;
-    ch[0] = 5 | (wr ? (1 << 6) : 0) | (1 << 16);
-    ch[1] = 0;
-    ch[2] = ahci_ct_pa;
-    ch[3] = 0;
-    for (int i = 4; i < 8; i++) ch[i] = 0;
-    volatile uint32_t *prdt = (volatile uint32_t *)(ahci_ct_pa + 0x80);
-    prdt[0] = (uint32_t)buf;
-    prdt[1] = 0;
-    prdt[2] = ((uint32_t)cnt * 512 - 1) | 0x80000000;
-    prdt[3] = 0;
-    apw(A_POR_CI, 1);
-    uint32_t *ci_reg = (uint32_t *)((uint32_t)ahci_abar + 0x100 + ahci_port * 0x80 + A_POR_CI);
-    int to = 5000000;
-    while ((*ci_reg & 1) && to--) { __asm__ volatile ("pause"); }
-    if (!to) return 0;
-    if (apr(A_POR_TFD) & 0xFF) return 0;
-    return 1;
-}
-
-static int ahci_init(void) {
-    int found = 0; uint32_t bar5 = 0; int bdf = 0;
-    for (int d = 0; d < 32 && !found; d++) for (int f = 0; f < 8 && !found; f++) {
-        uint32_t id = pci_read(0, d, f, 0);
-        if (id == 0xFFFFFFFF) { if (f == 0) break; continue; }
-        uint32_t cc = pci_read(0, d, f, 8);
-        uint8_t cls = (cc >> 24) & 0xFF;
-        uint8_t scl = (cc >> 16) & 0xFF;
-        if ((cls == 0x01 && scl == 0x06) || (cls == 0x01 && scl == 0x04)) {
-            bar5 = pci_read(0, d, f, 0x24);
-            if (bar5 & ~0x0F) {
-                uint32_t cmd = pci_read(0, d, f, 4);
-                cmd |= 0x07;
-                outl(0xCF8, (0x80000000 | (d << 11) | (f << 8) | 4));
-                outl(0xCFC, cmd);
-                found = 1;
-            }
-        }
-    }
-    if (!found) return 0;
-    ahci_abar = (volatile void *)(uint32_t)(bar5 & ~0x0F);
-    ahci_setup();
-    volatile uint32_t *ghc = (volatile uint32_t *)((uint32_t)ahci_abar + 0x04);
-    while (*ghc & 1) { __asm__ volatile ("pause"); }
-    *ghc |= 0x80000000;
-    uint32_t pi = *(volatile uint32_t *)((uint32_t)ahci_abar + 0x0C);
-    for (int p = 0; p < 32; p++) {
-        if (!(pi & (1 << p))) continue;
-        uint32_t ssts = *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + A_POR_SST);
-        if ((ssts & 0x0F) != 3) continue;
-        if (!(ssts & 0xF0)) continue;
-        ahci_port = p;
-        volatile uint32_t *cmd = (volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + A_POR_CMD);
-        *cmd &= ~1;
-        ahci_wait(cmd, 0x8000, 0);
-        *cmd &= ~0x10;
-        ahci_wait(cmd, 0x4000, 0);
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + 0x00) = ahci_cl_pa;
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + 0x04) = 0;
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + 0x08) = ahci_fis_pa;
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + 0x0C) = 0;
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + 0x10) = 0xFFFFFFFF;
-        *(volatile uint32_t *)((uint32_t)ahci_abar + 0x100 + p * 0x80 + A_POR_SER) = 0xFFFFFFFF;
-        *cmd |= 0x10;
-        ahci_wait(cmd, 0, 0x4000);
-        *cmd |= 1;
-        ahci_wait(cmd, 0, 0x8000);
-        ahci_ok = 1;
-        return 1;
-    }
-    return 0;
+    ata_ok = ata_base || ata_base2;
+    return ata_ok;
 }
 
 static uint32_t find_data_part(void) {
     uint8_t buf[512];
-    int ok = 0;
-    if (ahci_ok) ok = ahci_rw(0, 0, 1, buf);
-    if (!ok && ata_base) ok = ata_rw(0, 0, 1, buf, ata_base);
-    if (!ok && ata_base2) ok = ata_rw(0, 0, 1, buf, ata_base2);
-    if (!ok) ok = ata_rw(0, 0, 1, buf, 0x1F0);
-    if (!ok) ok = ata_rw(0, 0, 1, buf, 0x170);
+    int ok = (ata_base && ata_rw(0, 0, 1, buf, ata_base)) ||
+             (ata_base2 && ata_rw(0, 0, 1, buf, ata_base2)) ||
+             ata_rw(0, 0, 1, buf, 0x1F0) ||
+             ata_rw(0, 0, 1, buf, 0x170);
     if (!ok) return 0;
     if (buf[510] != 0x55 || buf[511] != 0xAA) return 0;
     for (int i = 0; i < 4; i++) {
@@ -246,15 +144,13 @@ void fs_init(void) {
     root_node.parent = &root_node;
     root_node.child_count = 0;
     root_node.content[0] = 0;
-    ahci_init();
-    serial_write("ahci ");serial_write(ahci_ok?"ok":"no");serial_write("\n");
-    if (!ahci_ok) ata_init();
+    ata_init();
     serial_write("ata ");serial_write(ata_base?"ok":"no");serial_write(" ");serial_write(ata_base2?"ok":"no");serial_write("\n");
     data_lba = find_data_part();
     if (data_lba) { serial_write("part lba ");serial_write_dec(data_lba);serial_write("\n"); }
     else serial_write("no part\n");
 }
-int fs_ata_present(void) { return ata_disk || ahci_ok; }
+int fs_ata_present(void) { return ata_ok; }
 fs_node_t *fs_get_root(void) { return &root_node; }
 static void pn(char *out, const char *path) {
     char buf[MAX_PATH];
@@ -370,16 +266,22 @@ static void spack(fs_node_t *nodes[], int count, uint8_t *buf, int i) {
 }
 
 int fs_write_sectors(uint32_t lba, uint8_t cnt, const void *b) {
-    return (ahci_ok && ahci_rw(1, lba, cnt, (void *)b)) || (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base)) || (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2)) || ata_rw(1, lba, cnt, (void *)b, 0x1F0) || ata_rw(1, lba, cnt, (void *)b, 0x170);
+    return (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base)) ||
+           (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2)) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x1F0) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x170);
 }
 int fs_read_sectors(uint32_t lba, uint8_t cnt, void *b) {
-    return (ahci_ok && ahci_rw(0, lba, cnt, b)) || (ata_base && ata_rw(0, lba, cnt, b, ata_base)) || (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2)) || ata_rw(0, lba, cnt, b, 0x1F0) || ata_rw(0, lba, cnt, b, 0x170);
+    return (ata_base && ata_rw(0, lba, cnt, b, ata_base)) ||
+           (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2)) ||
+           ata_rw(0, lba, cnt, b, 0x1F0) ||
+           ata_rw(0, lba, cnt, b, 0x170);
 }
 void fs_set_data_lba(uint32_t lba) { data_lba = lba; }
 uint32_t fs_get_data_lba(void) { return data_lba; }
 void fs_set_boot_media(int v) { boot_media = v; }
 int fs_get_boot_media(void) { return boot_media; }
-int fs_present(void) { return ata_base || ata_base2 || ahci_ok; }
+int fs_present(void) { return ata_base || ata_base2; }
 
 int fs_save_disk(void) {
     fs_node_t *nodes[MAX_FILES];
@@ -389,7 +291,7 @@ int fs_save_disk(void) {
     sb.magic = FS_MAGIC; sb.node_count = count; sb.root_index = 0;
     uint8_t *buf = (uint8_t *)malloc(ATA_SECTOR_SIZE * NODE_DISK_SECTORS);
     if (!buf) { serial_write("fs_save: no buf\n"); return 0; }
-    int ok = 0, td = ata_base || ata_base2 || ahci_ok;
+    int ok = 0, td = ata_base || ata_base2;
     serial_write("fs_save: td=");serial_write(td?"y":"n");serial_write(" dlba=");serial_write_dec(data_lba);serial_write("\n");
     if (td) {
         ok = 1;
@@ -398,7 +300,8 @@ int fs_save_disk(void) {
             if (probe) { data_lba = probe; fs_set_data_lba(probe); }
         }
         if (data_lba == 0) {
-            uint8_t mbr[512]; int got = ata_rd(0, 1, mbr);
+            uint8_t mbr[512]; int got = ata_rw(0, 0, 1, mbr, ata_base ? ata_base : 0x1F0);
+            if (ata_base2 && !got) got = ata_rw(0, 0, 1, mbr, ata_base2);
             serial_write("fs_save: mbr got=");serial_write(got?"y":"n");serial_write("\n");
             if (got && mbr[510] == 0x55 && mbr[511] == 0xAA) {
                 for (int p = 0; p < 4; p++) {
@@ -409,7 +312,8 @@ int fs_save_disk(void) {
                         e[8] = dl & 0xFF; e[9] = (dl >> 8) & 0xFF;
                         e[10] = (dl >> 16) & 0xFF; e[11] = (dl >> 24) & 0xFF;
                         e[12] = 0; e[13] = 8; e[14] = 0; e[15] = 0;
-                        ata_wr(0, 1, mbr);
+                        uint16_t b = ata_base ? ata_base : 0x1F0;
+                        ata_rw(1, 0, 1, mbr, b);
                         data_lba = dl; fs_set_data_lba(dl);
                         break;
                     }
@@ -422,7 +326,8 @@ int fs_save_disk(void) {
                 mbr[456] = (dl >> 16) & 0xFF; mbr[457] = (dl >> 24) & 0xFF;
                 mbr[458] = 0; mbr[459] = 8; mbr[460] = 0; mbr[461] = 0;
                 mbr[510] = 0x55; mbr[511] = 0xAA;
-                ata_wr(0, 1, mbr);
+                uint16_t b = ata_base ? ata_base : 0x1F0;
+                ata_rw(1, 0, 1, mbr, b);
                 data_lba = dl; fs_set_data_lba(dl);
             }
             if (data_lba == 0) { serial_write("fs_save: no dlba\n"); ok = 0; goto out; }
@@ -438,6 +343,7 @@ out:
     return ok;
 }
 int fs_seed_disk(void) { return fs_save_disk(); }
+
 static int dld(sector_read_t rd) {
     superblock_t sb;
     if (!rd(0, 1, &sb) || sb.magic != FS_MAGIC) return 0;

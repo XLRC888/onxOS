@@ -24,7 +24,6 @@ void cmd_tree(fs_node_t *cwd, const char *arg);
 void cmd_cowsay(const char *arg);
 void cmd_find(fs_node_t *cwd, const char *arg);
 void cmd_grep(fs_node_t *cwd, const char *arg);
-void cmd_setup(fs_node_t *cwd);
 void cmd_head(fs_node_t *cwd, const char *arg);
 void cmd_tail(fs_node_t *cwd, const char *arg);
 void cmd_wc(fs_node_t *cwd, const char *arg);
