@@ -6,58 +6,40 @@
  \___/  |_| \_| /_/ \_\ \___/  |____/
 </pre></h2>
 
-A 32-bit x86 operating system from scratch. Boots on old hardware, slow
-laptops, and QEMU. Comes with a persistent filesystem, a text editor, and a
-shell that has way more commands than it should.
+32-bit x86 OS from scratch. Boots in QEMU, old hardware, slow laptops.
 
-If your main machine is a decade old or you have a pile of netbooks collecting
-dust, onxOS might actually be useful. It boots fast, lives entirely in memory
-if needed, has no bloat from graphics stacks, audio subsystems, or network
-protocols.
+Comes with a persistent filesystem, text editor, and a shell with ~30 commands.
+No graphics stack, no audio, no networking. Just a terminal.
 
-Download the latest ISO from Releases, or build it yourself.
-
-### QUICK START
+Grab the latest ISO from Releases, or build it:
 
 ```
   make iso
-  
   make run
 ```
 
-That boots it in QEMU with a 256MB virtual disk attached. Ctrl+A then X to
-exit. Connect via serial: -serial stdio.
+Ctrl+A then X to exit QEMU. For serial: -serial stdio.
 
-To install to the HDD from the live ISO: boot, run `setup`, then `exit`. The
-bootloader writes to the first 6 sectors, kernel to the next 122, and the
-filesystem starts at LBA 128. After that you can boot the disk directly:
-
-```
-  make run-hdd
-```
+Install to disk from the live ISO: boot, run `setup`, then `exit`. This writes
+the bootloader (first 6 sectors), kernel (next 122), and filesystem (LBA 128+).
+After that you can boot the disk directly with `make run-hdd`.
 
 ### BUILD REQUIREMENTS
 
   - gcc (i686 cross-compiler or native with -m32)
-  - nasm
-  - ld
-  - grub-mkimage
-  - xorriso
-  - python3
+  - nasm, ld, python3
+  - grub-mkimage, xorriso
   - qemu-system-i386 (for testing)
 
-On Arch Linux:
+On Arch:
 
 ```
 pacman -S base-devel nasm grub libisoburn python qemu-system-x86
 ```
 
-The Makefile handles everything else. Just run make iso.
-
 ### SHELL
 
-The shell supports tab completion, command history (!!, !n and up/down arrow), and about 30
-commands. You get a filesystem, a text editor, and a cow.
+Tab completion, history (!!/!n/arrows), ~30 commands:
 
 ```
   / $ help
@@ -66,17 +48,17 @@ commands. You get a filesystem, a text editor, and a cow.
 
     ls/cd/pwd        navigate directories
     touch/mkdir      create files / directories
-    rm/rmdir         remove files (rm -r for directories)
+    rm/rmdir         remove files (rm -r for dirs)
     cat              print file contents
     echo             print text
     cp/mv            copy / move files
     find <pat>       find files by name
     grep <pat>       search file contents
-    head <f>         first 10 lines of file
+    head <f>         first 10 lines
     tail <f>         last 10 lines (-n N)
     wc <f>           count lines, words, bytes
     history          show command history
-    uname            system information
+    uname            system info
     df/du            disk usage / directory size
     sort <f>         sort file lines
     yes [msg]        repeat a string
@@ -87,13 +69,13 @@ commands. You get a filesystem, a text editor, and a cow.
     tac <f>          reverse line order
     base64 <f>       base64 encode a file
     uniq <f>         filter duplicate lines
-    stat <f>         file information
+    stat <f>         file info
     hex <f>          hex dump
     tree [dir]       display directory tree
     tau <f>          text editor (esc to exit)
     setup            install onxOS to this disk
-    cowsay [msg]     ascii cow with a message
-    clear/ver/reboot clear screen / version / reboot
+    cowsay [msg]     ascii cow
+    clear/ver/reboot clear / version / reboot
     help             you are here
     !! or !5         re-run from history
 
@@ -120,16 +102,11 @@ commands. You get a filesystem, a text editor, and a cow.
                   ||     ||
 ```
 
-### INTERACTIVE SESSION
+### SESSION EXAMPLE
 
 ```
   / $ pwd
   /
-
-  / $ df
-    files: 0
-    dirs: 0
-    data_lba: 81
 
   / $ echo hello world
   hello world
@@ -140,27 +117,17 @@ commands. You get a filesystem, a text editor, and a cow.
     docs/
 
   / $ cd docs
-  /docs $ pwd
-  /docs
-
   /docs $ touch readme.md
-  /docs $ cd /
 
   / $ history
-    1  help
-    2  ver
-    3  uname
-    4  ls
-    5  pwd
-    6  df
-    7  echo hello world
-    8  touch test.txt
-    9  mkdir docs
-    10  cd docs
-    11  touch readme.md
-    12  cd /
-    13  ls
-    14  history
+    1  pwd
+    2  echo hello world
+    3  touch test.txt
+    4  mkdir docs
+    5  ls
+    6  cd docs
+    7  touch readme.md
+    8  history
 
   / $ seq 5
   1
@@ -170,33 +137,22 @@ commands. You get a filesystem, a text editor, and a cow.
   5
 ```
 
-### WHY THIS EXISTS
+### NOTES
 
-Old netbooks with 1GB of RAM and Atom processors can run this. No X server, no
-audio, no networking, no bloat. The kernel stays in memory and boot time is
-measured in seconds even on spinning rust.
+Runs on old netbooks with 1GB RAM and Atom CPUs. Boot time in seconds even on
+HDDs. Not a Linux replacement. Its a self contained environment for editing
+text, writing code, or tinkering with a minimal OS.
 
-It is not trying to replace Linux. It is a self-contained environment for
-editing text files, writing code, or tinkering with a minimal OS. If your idea
-of a good time is a shell and a filesystem and nothing else, this fits.
-
-The persistent filesystem saves to disk when you type exit. Reboot and your
-files are still there. No fsck, no journaling, no overhead.
+Filesystem saves to disk on exit. No fsck, no journaling.
 
 ### EDITOR
 
-tau is a basic text editor built into the shell. Open it with:
-
-```
-tau filename.txt
-```
-
-Controls are minimal. Type to insert, escape to exit, and the file is preserved
-in the filesystem. It is meant for quick edits, not IDE work.
+tau is the built in text editor. Open with `tau filename.txt`.
+Type to insert, escape to exit.
 
 ### LICENSE
 
 Do whatever you want with it.
 
 ### DISCLAIMER
-Use it at your own risk.
+Use at your own risk.
