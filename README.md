@@ -6,27 +6,26 @@
  \___/  |_| \_| /_/ \_\ \___/  |____/
 </pre></h2>
 
-32-bit x86 OS from scratch. Primary target is real hardware: old laptops,
-netbooks, anything with an i686 CPU. QEMU is just for development.
+32-bit x86 hobby OS from scratch
 
 Persistent filesystem, text editor, shell with ~30 commands. No graphics stack,
-no audio, no networking. Boot time in seconds even on spinning rust.
+no audio, no networking.
 
-Grab the latest ISO from Releases, or build it:
+Grab the latest ISO from Releases, or build it yourself:
 
 ```
   make iso
   make run
 ```
 
-Ctrl+A then X to exit QEMU. For serial: -serial stdio.
+Ctrl+A then X to exit QEMU. For serial: -serial stdio
 
 Install to disk from the live ISO: boot, run `setup`, then `exit`. This writes
-the bootloader (first 6 sectors), kernel (next 122), and filesystem (LBA 128+).
-After that you can boot the disk directly with `make run-hdd`.
+the bootloader (first 6 sectors), kernel (next 122), and filesystem (LBA 128+)
+After that you can boot the disk directly with `make run-hdd`
 
-Runs on machines with 1GB RAM and Atom CPUs. Not trying to replace Linux.
-Just a self contained environment for editing text, writing code, or tinkering.
+Runs on machines with 1GB RAM and Atom CPUs. 
+To be honest, I don't even know what you would OR could do with it.
 
 ### BUILD REQUIREMENTS
 
@@ -151,4 +150,4 @@ Type to insert, escape to exit.
 Do whatever you want with it.
 
 ### DISCLAIMER
-Use at your own risk.
+It's not stable. Some commits might be just broken, so back up the data you need, and use at your own risk. (im talking about installing it on real hardware)
