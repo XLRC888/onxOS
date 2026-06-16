@@ -1,20 +1,19 @@
 <h2><pre>
   ___    _   _   _   _   ___    ____
- / _ \  | \ | | \ \ / / / _ \  | ___|
-| | | | |  \| |  \ | / | | | | |___ |
-| |_| | | |\  |  / | \ | |_| |  __| |
- \___/  |_| \_| /_/ \_\ \___/  |____|
+ / _ \  | \ | | \ \ / / / _ \  / ___|
+| | | | |  \| |  \ | / | | | | \___	\
+| |_| | | |\  |  / | \ | |_| |  ___) |
+ \___/  |_| \_| /_/ \_\ \___/  |____/
 </pre></h2>
 
-A 32-bit x86 operating system built from scratch. Boots on old hardware, slow
-laptops, and QEMU. Comes with a persistent filesystem, AHCI/SATA support, a
-text editor, and a shell that has way more commands than it should.
+A 32-bit x86 operating system from scratch. Boots on old hardware, slow
+laptops, and QEMU. Comes with a persistent filesystem, a text editor, and a
+shell that has way more commands than it should.
 
 If your main machine is a decade old or you have a pile of netbooks collecting
 dust, onxOS might actually be useful. It boots fast, lives entirely in memory
-if needed, and has no bloat from graphics stacks, audio subsystems, or network
-protocols. The kernel is about 40KB and the whole ISO fits on a floppy-era
-budget at 582KB.
+if needed, has no bloat from graphics stacks, audio subsystems, or network
+protocols.
 
 Download the latest ISO from Releases, or build it yourself.
 
@@ -25,7 +24,6 @@ Download the latest ISO from Releases, or build it yourself.
   
   make run
 ```
-
 
 That boots it in QEMU with a 256MB virtual disk attached. Ctrl+A then X to
 exit. Connect via serial: -serial stdio.
@@ -50,11 +48,9 @@ filesystem starts at LBA 128. After that you can boot the disk directly:
 
 On Arch Linux:
 
-  
 ```
 pacman -S base-devel nasm grub libisoburn python qemu-system-x86
 ```
-
 
 The Makefile handles everything else. Just run make iso.
 
@@ -62,7 +58,6 @@ The Makefile handles everything else. Just run make iso.
 
 The shell supports tab completion, command history (!!, !n and up/down arrow), and about 30
 commands. You get a filesystem, a text editor, and a cow.
-(also has a scrollback feature with PgUp and PgDn)
 
 ```
   / $ help
@@ -96,7 +91,7 @@ commands. You get a filesystem, a text editor, and a cow.
     hex <f>          hex dump
     tree [dir]       display directory tree
     tau <f>          text editor (esc to exit)
-    setup            install onxOS to this disk (writes bootloader + kernel + filesystem)
+    setup            install onxOS to this disk
     cowsay [msg]     ascii cow with a message
     clear/ver/reboot clear screen / version / reboot
     help             you are here
@@ -105,14 +100,12 @@ commands. You get a filesystem, a text editor, and a cow.
   note: exit saves the filesystem and halts
 ```
 
-
 ```
   / $ ver
 
   onxIM v0.0.5
   built for i686
 ```
-
 
 ```
   / $ cowsay onxOS
@@ -127,10 +120,7 @@ commands. You get a filesystem, a text editor, and a cow.
                   ||     ||
 ```
 
-
 ### INTERACTIVE SESSION
-
-Here is what a real session looks like:
 
 ```
   / $ pwd
@@ -180,19 +170,18 @@ Here is what a real session looks like:
   5
 ```
 
-
 ### WHY THIS EXISTS
 
-Old netbooks with 1GB of RAM and Atom processors can run this. There is no X
-server, no audio, no networking, no bloat. The kernel lives in memory and the
-boot time is measured in seconds even on spinning rust.
+Old netbooks with 1GB of RAM and Atom processors can run this. No X server, no
+audio, no networking, no bloat. The kernel stays in memory and boot time is
+measured in seconds even on spinning rust.
 
 It is not trying to replace Linux. It is a self-contained environment for
-editing text files, writing code, or tinkering with a minimal OS. If your
-idea of a good time is a shell and a filesystem and nothing else, this fits.
+editing text files, writing code, or tinkering with a minimal OS. If your idea
+of a good time is a shell and a filesystem and nothing else, this fits.
 
 The persistent filesystem saves to disk when you type exit. Reboot and your
-files are still there. No fsck, no journaling, no overhead. It just works.
+files are still there. No fsck, no journaling, no overhead.
 
 ### EDITOR
 
@@ -202,14 +191,12 @@ tau is a basic text editor built into the shell. Open it with:
 tau filename.txt
 ```
 
-
-Controls are minimal. Type to insert, escape to exit, and the file is
-preserved in the filesystem. It is meant for quick edits, not IDE work.
+Controls are minimal. Type to insert, escape to exit, and the file is preserved
+in the filesystem. It is meant for quick edits, not IDE work.
 
 ### LICENSE
 
-Do whatever you want OR can with it.
-
+Do whatever you want with it.
 
 ### DISCLAIMER
 Use it at your own risk.
