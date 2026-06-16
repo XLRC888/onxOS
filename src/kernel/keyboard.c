@@ -4,7 +4,7 @@
 #include "serial.h"
 static char kb[KEY_BUF_SIZE];
 static int bh = 0, bt = 0;
-static int ls = 0, rs = 0, caps = 0;
+static int ls = 0, rs = 0, caps = 0, ctrl = 0;
 static int bf = 0;
 static int ext = 0;
 static int ps2ok = 0;
@@ -39,6 +39,10 @@ static int mcs(const char *s, int ln) {
         if (s[2]=='C')return KEY_RIGHT;if(s[2]=='D')return KEY_LEFT;
         if (s[2]=='H')return KEY_HOME;if(s[2]=='F')return KEY_END;
     }
+    if (ln==6&&s[2]=='1'&&s[3]==';'&&s[4]=='2'&&s[5]=='A')return KEY_SUP;
+    if (ln==6&&s[2]=='1'&&s[3]==';'&&s[4]=='2'&&s[5]=='B')return KEY_SDOWN;
+    if (ln==6&&s[2]=='1'&&s[3]==';'&&s[4]=='2'&&s[5]=='C')return KEY_SRIGHT;
+    if (ln==6&&s[2]=='1'&&s[3]==';'&&s[4]=='2'&&s[5]=='D')return KEY_SLEFT;
     if (ln==4&&s[2]=='1'&&s[3]=='~')return KEY_HOME;
     if (ln==4&&s[2]=='3'&&s[3]=='~')return KEY_DELETE;
     if (ln==4&&s[2]=='4'&&s[3]=='~')return KEY_END;
@@ -58,11 +62,13 @@ static void sc(uint8_t s) {
     if (ext) {
         ext = 0;
         if (s & 0x80) return;
-        if (s == 0x48) { push(KEY_UP); return; }
+        if (s == 0x1D) { ctrl = 1; return; }
+        if (s == 0x9D) { ctrl = 0; return; }
+        if (s == 0x48) { push((ls||rs)?KEY_SUP:KEY_UP); return; }
         if (s == 0x49) { push(KEY_PGUP); return; }
-        if (s == 0x4B) { push(KEY_LEFT); return; }
-        if (s == 0x4D) { push(KEY_RIGHT); return; }
-        if (s == 0x50) { push(KEY_DOWN); return; }
+        if (s == 0x4B) { push((ls||rs)?KEY_SLEFT:KEY_LEFT); return; }
+        if (s == 0x4D) { push((ls||rs)?KEY_SRIGHT:KEY_RIGHT); return; }
+        if (s == 0x50) { push((ls||rs)?KEY_SDOWN:KEY_DOWN); return; }
         if (s == 0x51) { push(KEY_PGDN); return; }
         if (s == 0x53) { push(KEY_DELETE); return; }
         return;
@@ -72,6 +78,8 @@ static void sc(uint8_t s) {
     if (s == 0xAA) { ls = 0; return; }
     if (s == 0xB6) { rs = 0; return; }
     if (s == 0x3A || s == 0x58) { caps = !caps; return; }
+    if (s == 0x1D) { ctrl = 1; return; }
+    if (s == 0x9D) { ctrl = 0; return; }
     if (s & 0x80) return;
     if (s == 0x47) { push(KEY_HOME); return; }
     if (s == 0x49) { push(KEY_PGUP); return; }
@@ -85,6 +93,8 @@ static void sc(uint8_t s) {
     else c = 0;
     if (caps && c >= 'a' && c <= 'z') c -= 32;
     else if (caps && c >= 'A' && c <= 'Z') c += 32;
+    if (ctrl && c >= 'a' && c <= 'z') c = c - 'a' + 1;
+    else if (ctrl && c >= 'A' && c <= 'Z') c = c - 'A' + 1;
     if (c) push(c);
 }
 static void cb(registers_t *r) { (void)r; if (inb(0x64) & 1) sc(inb(0x60)); }
