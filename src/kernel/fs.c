@@ -172,7 +172,7 @@ static void pn(char *out, const char *path) {
         } else if (!in) { tok = &buf[i]; in = 1; }
     }
     out[0]='/'; int pos=1;
-    for (int i=0;i<np;i++){if(pos>1)out[pos++]='/';int j=0;while(parts[i][j])out[pos++]=parts[i][j++];}
+    for (int i=0;i<np&&pos<MAX_PATH-1;i++){if(pos>1)out[pos++]='/';int j=0;while(parts[i][j]&&pos<MAX_PATH-1)out[pos++]=parts[i][j++];}
     out[pos]=0;if(pos==1)out[0]='/',out[1]=0;
 }
 static void bp(char *out, fs_node_t *node) {
@@ -180,14 +180,14 @@ static void bp(char *out, fs_node_t *node) {
     bp(out, node->parent);
     int l = strlen(out);
     if (l>1||out[0]!='/'){out[l]='/';out[++l]=0;}
-    strcpy(out+l, node->name);
+    if (l + strlen(node->name) < MAX_PATH) strcpy(out+l, node->name);
 }
 void fs_to_absolute(char *out, fs_node_t *cwd, const char *rel) {
     char abs[MAX_PATH], exp[MAX_PATH];
     const char *p = rel;
     if (p[0]=='~'&&(p[1]=='/'||p[1]==0)){exp[0]='/';if(p[1]=='/')strcpy(exp+1,p+2);else exp[1]=0;p=exp;}
     if (p[0]=='/') { strcpy(abs, p); }
-    else { bp(abs, cwd); if(*p){int l=strlen(abs);if(l>1||abs[0]!='/')abs[l++]='/';abs[l]=0;strcat(abs,p);} }
+    else { bp(abs, cwd); if(*p){int l=strlen(abs);if(l>1||abs[0]!='/')abs[l++]='/';abs[l]=0;int pl=strlen(p);if(l+pl<MAX_PATH)strcpy(abs+l,p);} }
     pn(out, abs);
 }
 fs_node_t *fs_find(fs_node_t *dir, const char *name) {
@@ -220,8 +220,8 @@ int fs_delete(fs_node_t *parent, const char *name) {
     return 0;
 }
 int fs_is_child_of(fs_node_t *parent, fs_node_t *child) {
-    fs_node_t *p = child;
-    while (p != p->parent) { if (p == parent) return 1; p = p->parent; }
+    fs_node_t *p = child; int limit = 256;
+    while (p != p->parent && limit--) { if (p == parent) return 1; p = p->parent; }
     return 0;
 }
 fs_node_t *fs_resolve(const char *path, fs_node_t *cwd) {
@@ -306,7 +306,7 @@ int fs_save_disk(void) {
             if (got && mbr[510] == 0x55 && mbr[511] == 0xAA) {
                 for (int p = 0; p < 4; p++) {
                     uint8_t *e = mbr + 446 + p * 16;
-                    if (e[4] == 0) {
+                    if (*(uint32_t*)e==0&&*(uint32_t*)(e+4)==0&&*(uint32_t*)(e+8)==0&&*(uint32_t*)(e+12)==0) {
                         uint32_t dl = 128 + p * 2048;
                         e[0] = 0x80; e[4] = 0xDA;
                         e[8] = dl & 0xFF; e[9] = (dl >> 8) & 0xFF;
@@ -358,10 +358,10 @@ static int dld(sector_read_t rd) {
     uint8_t *buf = (uint8_t *)malloc(ATA_SECTOR_SIZE * NODE_DISK_SECTORS);
     if (!buf) { free(metas); return 0; }
     for (int i = 0; i < count; i++) {
-        if (!rd(1 + i * NODE_DISK_SECTORS, NODE_DISK_SECTORS, buf)) { free(buf); free(metas); return 0; }
+        if (!rd(1 + i * NODE_DISK_SECTORS, NODE_DISK_SECTORS, buf)) { for(int j=1;j<i;j++)free(loaded[j]); free(buf); free(metas); return 0; }
         memcpy(&metas[i], buf, sizeof(node_meta_t));
         if (i == 0) loaded[i] = &root_node;
-        else { loaded[i] = (fs_node_t *)malloc(sizeof(fs_node_t)); if (!loaded[i]) { free(buf); free(metas); return 0; } memset(loaded[i], 0, sizeof(fs_node_t)); }
+        else { loaded[i] = (fs_node_t *)malloc(sizeof(fs_node_t)); if (!loaded[i]) { for(int j=1;j<i;j++)free(loaded[j]); free(buf); free(metas); return 0; } memset(loaded[i], 0, sizeof(fs_node_t)); }
         strncpy(loaded[i]->name, metas[i].name, MAX_NAME - 1); loaded[i]->name[MAX_NAME - 1] = 0;
         loaded[i]->type = (file_type_t)metas[i].type;
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
@@ -402,7 +402,7 @@ int fs_load_from_memory(void *data) {
         uint32_t off = 512 + (uint32_t)i * NODE_DISK_SECTORS * 512;
         memcpy(&metas[i], (uint8_t *)data + off, sizeof(node_meta_t));
         if (i == 0) loaded[i] = &root_node;
-        else { loaded[i] = (fs_node_t *)malloc(sizeof(fs_node_t)); if (!loaded[i]) { free(metas); return 0; } memset(loaded[i], 0, sizeof(fs_node_t)); }
+        else { loaded[i] = (fs_node_t *)malloc(sizeof(fs_node_t)); if (!loaded[i]) { for(int j=1;j<i;j++)free(loaded[j]); free(metas); return 0; } memset(loaded[i], 0, sizeof(fs_node_t)); }
         strncpy(loaded[i]->name, metas[i].name, MAX_NAME - 1); loaded[i]->name[MAX_NAME - 1] = 0;
         loaded[i]->type = (file_type_t)metas[i].type;
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
