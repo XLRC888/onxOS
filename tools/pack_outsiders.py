@@ -24,7 +24,6 @@ def pack():
 
     img = bytearray(img_size)
 
-    # superblock at LBA 0
     struct.pack_into('<I', img, 0, FS_MAGIC)
     struct.pack_into('<I', img, 4, total_nodes)
     struct.pack_into('<I', img, 8, 0)  # root_index = 0
