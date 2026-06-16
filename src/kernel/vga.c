@@ -7,7 +7,7 @@
 #define VM 0xB8000
 #define VW 80
 #define VH 25
-#define SB_ROWS 4096
+#define SB_ROWS 1024
 static uint16_t *vb = (uint16_t *)VM;
 static int cr = 0, cc = 0;
 static uint8_t fg = COLOR_LIGHT_GREY, bg = COLOR_BLACK;

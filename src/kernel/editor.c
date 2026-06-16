@@ -115,19 +115,19 @@ void editor_open(fs_node_t *cwd, const char *filename) {
             if(ed.cc>0){char*ln=ed.l[ed.cr];int s=ed.cc-1;while(s>0&&!wc(ln[s]))s--;while(s>0&&wc(ln[s-1]))s--;
                 int ln2=ed.cc-s;for(int i=s;i+ln2<=EC;i++)ln[i]=ln[i+ln2];ed.cc=s;mod=1;}
             else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);int scl=strlen(ed.l[ed.cr]);int av=EC-pl;if(scl>av)scl=av;memcpy(ed.l[ed.cr-1]+pl,ed.l[ed.cr],scl);ed.l[ed.cr-1][pl+scl]=0;
-                for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
+                free(ed.l[ed.cr]);for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
         }
         else if(c=='\n'||c=='\r'){
             char*ln=ed.l[ed.cr];int l=strlen(ln);char*right=es(ln+ed.cc);
             ln[ed.cc]=0;
-            if(ed.lc<EL-1){char*nl=es(ln);for(int i=ed.lc;i>ed.cr+1;i--)ed.l[i]=ed.l[i-1];
+            if(ed.lc<EL-1){char*nl=es(ln);free(ed.l[ed.cr]);for(int i=ed.lc;i>ed.cr+1;i--)ed.l[i]=ed.l[i-1];
             ed.l[ed.cr]=nl;ed.l[ed.cr+1]=right;ed.lc++;ed.cr++;ed.cc=0;mod=1;
             if(ed.cr-ed.tl>=VR)ed.tl++;}
         }
         else if(c=='\b'){
             if(ed.cc>0){int l=strlen(ed.l[ed.cr]);for(int i=ed.cc-1;i<l;i++)ed.l[ed.cr][i]=ed.l[ed.cr][i+1];ed.cc--;mod=1;}
             else if(ed.cr>0){int pl=strlen(ed.l[ed.cr-1]);int scl=strlen(ed.l[ed.cr]);int av=EC-pl;if(scl>av)scl=av;memcpy(ed.l[ed.cr-1]+pl,ed.l[ed.cr],scl);ed.l[ed.cr-1][pl+scl]=0;
-                for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
+                free(ed.l[ed.cr]);for(int i=ed.cr;i<ed.lc-1;i++)ed.l[i]=ed.l[i+1];ed.lc--;ed.cr--;ed.cc=pl;mod=1;}
         }
         else if(c=='\t'){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l+4<EC){for(int i=l;i>=ed.cc;i--)ln[i+4]=ln[i];
             ln[ed.cc]=' ';ln[ed.cc+1]=' ';ln[ed.cc+2]=' ';ln[ed.cc+3]=' ';ed.cc+=4;mod=1;}}
@@ -136,12 +136,13 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         if(mod)ed.dirty=1;
     }
     int ri=0;ed.nd->content[0]=0;
-    for(int i=0;i<ed.lc&&ri<4090;i++){
-        int ll=strlen(ed.l[i]);if(ll>4090-ri)ll=4090-ri;
+    for(int i=0;i<ed.lc&&ri<MAX_CONTENT-6;i++){
+        int ll=strlen(ed.l[i]);if(ll>MAX_CONTENT-6-ri)ll=MAX_CONTENT-6-ri;
         memcpy(ed.nd->content+ri,ed.l[i],ll);ri+=ll;
-        if(ri<4095){ed.nd->content[ri]='\n';ri++;}
+        if(ri<MAX_CONTENT-1){ed.nd->content[ri]='\n';ri++;}
     }
     ed.nd->content[ri]=0;
+    for(int i=0;i<ed.lc;i++)free(ed.l[i]);
     memcpy((uint16_t*)0xB8000,sv,sizeof(sv));
     vga_set_cursor(24,0);vga_set_fg(COLOR_LIGHT_GREY);vga_set_bg(COLOR_BLACK);
     vga_writeln("tau: saved");

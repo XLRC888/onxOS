@@ -19,7 +19,7 @@ void memory_init(void *heap_start, uint32_t heap_size) {
     free_list->free = 1;
 }
 static void split_block(block_t *block, uint32_t size) {
-    if (block->size <= size + BLOCK_SIZE + ALIGN) return;
+    if (size > 0xFFFFFFEF || block->size <= size + BLOCK_SIZE + ALIGN) return;
     block_t *new_block = (block_t *)((uint8_t *)block + BLOCK_SIZE + size);
     new_block->size = block->size - size - BLOCK_SIZE;
     new_block->next = block->next;
