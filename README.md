@@ -6,7 +6,7 @@
  \___/  |_| \_| /_/ \_\ \___/  |____/
 </pre></h2>
 
-32-bit x86 OS from scratch. Primary target is real hardware - old laptops,
+32-bit x86 OS from scratch. Primary target is real hardware: old laptops,
 netbooks, anything with an i686 CPU. QEMU is just for development.
 
 Persistent filesystem, text editor, shell with ~30 commands. No graphics stack,
