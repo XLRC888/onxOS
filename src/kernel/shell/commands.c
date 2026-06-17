@@ -261,7 +261,7 @@ void cmd_grep(fs_node_t *cwd, const char *arg) {
 void cmd_cowsay(const char *arg) {
     const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
     const char *p=arg;skip(&p);if(!*p)p=on;
-    int l=strlen(p)+2;vga_write("  ");for(int i=0;i<l;i++)vga_putchar('_');vga_putchar('\n');
+    int l=strlen(p)+2;vga_putchar('\n');vga_write("  ");for(int i=0;i<l;i++)vga_putchar('_');vga_putchar('\n');
     vga_write(" < ");vga_write(p);vga_writeln(" >");
     vga_write("  ");for(int i=0;i<l;i++)vga_putchar('-');vga_putchar('\n');
     vga_writeln("        \\   ^__^\n"
