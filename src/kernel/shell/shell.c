@@ -109,34 +109,34 @@ static void exec(const char *cmd) {
     else if(strcmp(a[0],"pwd")==0)cmd_pwd(cd);
     else if(strcmp(a[0],"ls")==0)cmd_ls(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"cd")==0)cmd_cd(&cd,ac>1?a[1]:"~");
-    else if(strcmp(a[0],"mkdir")==0)cmd_mkdir(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"touch")==0)cmd_touch(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"rm")==0)cmd_rm(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"rmdir")==0)cmd_rmdir(cd,ac>1?buf+strlen(a[0]):"");
+    else if(strcmp(a[0],"mkdir")==0)cmd_mkdir(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"touch")==0)cmd_touch(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"rm")==0)cmd_rm(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"rmdir")==0)cmd_rmdir(cd,ac>1?cmd+strlen(a[0]):"");
     else if(strcmp(a[0],"cat")==0)cmd_cat(cd,ac>1?a[1]:"");
-    else if(strcmp(a[0],"echo")==0){const char *ea=ac>1?buf+strlen(a[0]):"";while(*ea==' ')ea++;cmd_echo(ea);}
-    else if(strcmp(a[0],"cp")==0)cmd_cp(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"mv")==0)cmd_mv(cd,ac>1?buf+strlen(a[0]):"");
+    else if(strcmp(a[0],"echo")==0){const char *ea=ac>1?cmd+strlen(a[0]):"";while(*ea==' ')ea++;cmd_echo(ea);}
+    else if(strcmp(a[0],"cp")==0)cmd_cp(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"mv")==0)cmd_mv(cd,ac>1?cmd+strlen(a[0]):"");
     else if(strcmp(a[0],"stat")==0)cmd_stat(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"hex")==0)cmd_hexdump(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"ver")==0)cmd_ver();
     else if(strcmp(a[0],"reboot")==0)cmd_reboot();
     else if(strcmp(a[0],"tau")==0){vga_writeln("[0] exec dispatching tau");cmd_tau(cd,ac>1?a[1]:"");}
     else if(strcmp(a[0],"tree")==0)cmd_tree(cd,ac>1?a[1]:"");
-    else if(strcmp(a[0],"find")==0)cmd_find(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"grep")==0)cmd_grep(cd,ac>1?buf+strlen(a[0]):"");
-    else if(strcmp(a[0],"cowsay")==0){const char *ca=ac>1?buf+strlen(a[0]):"";while(*ca==' ')ca++;cmd_cowsay(ca);}
+    else if(strcmp(a[0],"find")==0)cmd_find(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"grep")==0)cmd_grep(cd,ac>1?cmd+strlen(a[0]):"");
+    else if(strcmp(a[0],"cowsay")==0){const char *ca=ac>1?cmd+strlen(a[0]):"";while(*ca==' ')ca++;cmd_cowsay(ca);}
     else if(strcmp(a[0],"head")==0)cmd_head(cd,ac>1?a[1]:"");
-    else if(strcmp(a[0],"tail")==0)cmd_tail(cd,ac>1?buf+strlen(a[0]):"");
+    else if(strcmp(a[0],"tail")==0)cmd_tail(cd,ac>1?cmd+strlen(a[0]):"");
     else if(strcmp(a[0],"wc")==0)cmd_wc(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"history")==0)cmd_history();
     else if(strcmp(a[0],"uname")==0)cmd_uname();
     else if(strcmp(a[0],"df")==0)cmd_df();
     else if(strcmp(a[0],"du")==0)cmd_du(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"sort")==0)cmd_sort(cd,ac>1?a[1]:"");
-    else if(strcmp(a[0],"yes")==0){const char *ya=ac>1?buf+strlen(a[0]):"";while(*ya==' ')ya++;cmd_yes(ya);}
-    else if(strcmp(a[0],"sleep")==0){const char *sl=ac>1?buf+strlen(a[0]):"";while(*sl==' ')sl++;cmd_sleep(sl);}
-    else if(strcmp(a[0],"seq")==0){const char *sq=ac>1?buf+strlen(a[0]):"";while(*sq==' ')sq++;cmd_seq(sq);}
+    else if(strcmp(a[0],"yes")==0){const char *ya=ac>1?cmd+strlen(a[0]):"";while(*ya==' ')ya++;cmd_yes(ya);}
+    else if(strcmp(a[0],"sleep")==0){const char *sl=ac>1?cmd+strlen(a[0]):"";while(*sl==' ')sl++;cmd_sleep(sl);}
+    else if(strcmp(a[0],"seq")==0){const char *sq=ac>1?cmd+strlen(a[0]):"";while(*sq==' ')sq++;cmd_seq(sq);}
     else if(strcmp(a[0],"rev")==0)cmd_rev(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"which")==0)cmd_which(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"tac")==0)cmd_tac(cd,ac>1?a[1]:"");

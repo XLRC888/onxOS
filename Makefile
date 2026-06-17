@@ -4,7 +4,9 @@ LD = ld
 
 CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -fno-exceptions -Os -fno-builtin -Wall -Wextra -Wno-unused-variable \
-         -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel -I build \
+         -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel/core \
+         -I src/kernel/drivers -I src/kernel/fs -I src/kernel/mm \
+         -I src/kernel/shell -I src/kernel/cpu -I build \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
          -fno-asynchronous-unwind-tables -fmerge-all-constants \
          -mgeneral-regs-only -MMD -MP
@@ -15,21 +17,24 @@ LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
 SRC_DIR = src/kernel
 BUILD_DIR = build
 
-C_SRCS = $(wildcard $(SRC_DIR)/*.c)
-ASM_SRCS = $(SRC_DIR)/gdt_flush.asm $(SRC_DIR)/idt_load.asm $(SRC_DIR)/isr_entry.asm
-C_OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SRCS))
-ASM_OBJS = $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/%.o, $(ASM_SRCS))
+C_SRCS = $(shell find $(SRC_DIR) -name '*.c')
+ASM_SRCS = $(SRC_DIR)/cpu/gdt_flush.asm $(SRC_DIR)/cpu/idt_load.asm $(SRC_DIR)/cpu/isr_entry.asm
+C_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(patsubst %.c,%.o,$(C_SRCS))))
+ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(patsubst %.asm,%.o,$(ASM_SRCS))))
 BOOT_OBJ = $(BUILD_DIR)/boot.o
 
 all: $(BUILD_DIR)/onxos.bin
 
+SRC_DIRS = $(sort $(dir $(C_SRCS)))
+VPATH = $(SRC_DIRS)
+
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.asm | $(BUILD_DIR)
 	$(AS) -f elf32 $< -o $@
 
 $(BOOT_OBJ): src/boot/boot.asm | $(BUILD_DIR)
@@ -41,7 +46,7 @@ $(BUILD_DIR)/bootloader.bin: src/boot/bootloader.asm | $(BUILD_DIR)
 $(BUILD_DIR)/bootblob.h: $(BUILD_DIR)/bootloader.bin
 	python3 tools/patch_boot.py $< --header $@
 
-$(BUILD_DIR)/setup.o: src/kernel/setup.c $(BUILD_DIR)/bootblob.h
+$(BUILD_DIR)/setup.o: src/kernel/core/setup.c $(BUILD_DIR)/bootblob.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
