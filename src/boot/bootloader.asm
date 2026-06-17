@@ -87,6 +87,8 @@ a20_wait:
     mov al, 0xDF
     out 0x60, al
 a20_ok:
+    xor ax, ax
+    mov ds, ax
 
     lgdt [gdtr]
 
