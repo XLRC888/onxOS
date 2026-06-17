@@ -83,7 +83,7 @@ static void sc(uint8_t s) {
     if (s == 0xAA) { ls = 0; return; }
     if (s == 0xB6) { rs = 0; return; }
     if (s == 0x3A || s == 0x58) { if (!caps_held) caps = !caps; caps_held = 1; return; }
-    if (s == 0xBA || s == 0x1A) { caps_held = 0; return; }
+    if (s == 0xBA) { caps_held = 0; return; }
     if (s == 0x1D) { ctrl = 1; return; }
     if (s == 0x9D) { ctrl = 0; return; }
     if (s & 0x80) return;
