@@ -12,13 +12,11 @@ extern uint32_t end_of_kernel;
 
 static void parse_mb2_tags(uint32_t mbi_addr, uint32_t *mod_start, uint32_t *mod_end) {
     *mod_start = 0; *mod_end = 0;
+    if (!mbi_addr) return;
     uint32_t total_size = *(uint32_t *)mbi_addr;
     uint32_t *tag = (uint32_t *)(mbi_addr + 8);
     while ((uint32_t)tag < mbi_addr + total_size) {
-        if (tag[0] == 3) {
-            *mod_start = tag[2];
-            *mod_end = tag[3];
-        }
+        if (tag[0] == 3) { *mod_start = tag[2]; *mod_end = tag[3]; }
         if (tag[0] == 0) break;
         uint32_t sz = tag[1];
         tag = (uint32_t *)((uint8_t *)tag + (sz < 8 ? 8 : (sz + 7) & ~7));
@@ -47,17 +45,17 @@ void kernel_early(unsigned int magic, unsigned int mbi_addr) {
     int loaded = 0;
     if (fs_load_disk()) {
         loaded = 1;
-        serial_write("fs: disk ok\n");
     } else {
         serial_write("fs: no disk\n");
     }
     if (!loaded && mod_end > mod_start && fs_load_from_memory((void *)mod_start)) {
         loaded = 1;
-        serial_write("fs: module ok\n");
     }
+    if (magic == 0x36d76289) fs_set_boot_media(1);
     shell_init();
-    vga_write("onxOS");vga_writeln(" ready.");
-    serial_write("shell ready\n");
+    const char *on = fs_get_boot_media() ? "onxIM" : "onxOS";
+    vga_write(on);vga_writeln(" ready.");
+    serial_write(on);serial_write(" ready\n");
 }
 
 void kernel_main(void) {
