@@ -41,4 +41,5 @@ void cmd_tac(fs_node_t *cwd, const char *arg);
 void cmd_base64(fs_node_t *cwd, const char *arg);
 void cmd_uniq(fs_node_t *cwd, const char *arg);
 void cmd_setup(fs_node_t *cwd);
+void cmd_poweroff(void);
 #endif

@@ -6,6 +6,7 @@
 #include "editor.h"
 #include "fs.h"
 #include "keyboard.h"
+#include "serial.h"
 extern char hist[32][256];
 extern int hc;
 static void skip(const char **s) { while (**s == ' ') (*s)++; }
@@ -45,11 +46,12 @@ void cmd_help(void) {
         "  tau <f>          text editor (esc to exit)\n"
         "  cowsay [msg]     ascii cow with a message\n"
         "  clear/ver/reboot clear screen / version / reboot\n"
+        "  poweroff         save and shut down\n"
         "  help             you are here\n"
         "  !! or !5         re-run from history\n"
         "\nnote: ");
     vga_set_fg(COLOR_LIGHT_CYAN);
-    vga_write("exit saves the filesystem and halts");
+    vga_write("poweroff saves the filesystem and shuts down");
     vga_set_fg(COLOR_LIGHT_GREY);
     vga_putchar('\n');
 }
@@ -207,6 +209,36 @@ void cmd_reboot(void) {
     vga_writeln("rebooting...");
     uint8_t g=0x02;while(g&0x02)g=inb(0x64);outb(0x64,0xFE);
     for(;;)__asm__ volatile("hlt");
+}
+static uint32_t acpi_find_rsdp(void) {
+    uint16_t ebda_seg=*(volatile uint16_t*)0x40E;
+    if(ebda_seg){uint32_t ebda=ebda_seg*16;
+        for(uint32_t i=ebda;i<ebda+0x400;i+=16)
+            if(*(uint32_t*)i==0x20445352&&*(uint32_t*)(i+4)==0x20505452)return i;}
+    for(uint32_t i=0xE0000;i<0xFFFFF;i+=16)
+        if(*(uint32_t*)i==0x20445352&&*(uint32_t*)(i+4)==0x20505452)return i;
+    return 0;
+}
+static uint32_t acpi_find_fadt(uint32_t rsdp) {
+    uint32_t rsdt=*(uint32_t*)(rsdp+16);if(!rsdt)return 0;
+    uint32_t len=*(uint32_t*)(rsdt+4);if(len<36)return 0;
+    uint32_t cnt=(len-36)/4;
+    for(uint32_t i=0;i<cnt;i++){uint32_t t=*(uint32_t*)(rsdt+36+i*4);
+        if(t&&*(uint32_t*)t==0x50434146)return t;}
+    return 0;
+}
+void cmd_poweroff(void) {
+    vga_write("saving...");vga_writeln(fs_save_disk()?"ok":"fail");
+    serial_write("poweroff\n");
+    uint32_t rsdp=acpi_find_rsdp();
+    if(rsdp){uint32_t fadt=acpi_find_fadt(rsdp);
+        if(fadt){uint32_t pm1a=*(uint32_t*)(fadt+64);uint32_t pm1b=*(uint32_t*)(fadt+68);
+            serial_write("acpi pm1a=");serial_write_dec(pm1a);serial_write(" pm1b=");serial_write_dec(pm1b);serial_write("\n");
+            for(int t=5;t<=7;t++){uint16_t v=(t<<10)|(1<<13);
+                if(pm1a)outw(pm1a,v);if(pm1b)outw(pm1b,v);}}}
+    outw(0x604,0x2000);outw(0xB004,0x2000);
+    vga_writeln("powering off...");
+    for(;;)__asm__ volatile("cli;hlt");
 }
 void cmd_tau(fs_node_t *cwd, const char *arg) {
     vga_writeln("[1] cmd_tau entered");
