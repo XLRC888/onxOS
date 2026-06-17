@@ -76,7 +76,7 @@ $(ISO): $(BUILD_DIR)/onxos.elf | $(BUILD_DIR)
 	printf 'set timeout=0\nset default=0\n\nmenuentry "onxOS" {\n\tmultiboot2 /boot/onxos.bin\n' > $(ISODIR)/boot/grub/grub.cfg
 	if [ -f $(DISK) ]; then printf '\tmodule2 /boot/disk.img\n' >> $(ISODIR)/boot/grub/grub.cfg; fi
 	printf '\tboot\n}\n' >> $(ISODIR)/boot/grub/grub.cfg
-	grub-mkrescue -o $(ISO) $(ISODIR) 2>/dev/null
+	grub-mkrescue -o $(ISO) $(ISODIR) --compress=xz --fonts="" --locales="" --themes="" 2>/dev/null
 	@echo "Built: $(ISO)"
 	@ls -lh $(ISO)
 
