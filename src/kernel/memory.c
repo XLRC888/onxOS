@@ -13,6 +13,7 @@ static block_t *free_list = 0;
 void memory_init(void *heap_start, uint32_t heap_size) {
     heap_base = heap_start;
     heap_total = heap_size;
+    if (heap_size < BLOCK_SIZE) return;
     free_list = (block_t *)heap_base;
     free_list->size = heap_size - BLOCK_SIZE;
     free_list->next = 0;
@@ -29,7 +30,7 @@ static void split_block(block_t *block, uint32_t size) {
 }
 void *malloc(uint32_t size) {
     if (!size) return 0;
-    if (size % ALIGN) size += ALIGN - (size % ALIGN);
+    size = (size + ALIGN - 1) & ~(ALIGN - 1);
     block_t *curr = free_list;
     while (curr) {
         if (curr->free && curr->size >= size) {

@@ -26,6 +26,7 @@ static uint16_t ata_base2 = 0;
 static uint32_t data_lba = 0;
 static int boot_media = 0;
 static int ata_ok = 0;
+static uint16_t data_port = 0;
 
 static uint32_t pci_read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off) {
     uint32_t addr = (uint32_t)0x80000000 | ((uint32_t)bus << 16) | ((uint32_t)dev << 11) | ((uint32_t)func << 8) | (off & 0xFC);
@@ -73,6 +74,7 @@ static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base) {
 
 static int ata_rd(uint32_t lba, uint8_t cnt, void *b) {
     uint32_t dl = data_lba;
+    if (data_port) return ata_rw(0, lba + dl, cnt, b, data_port);
     return (ata_base && ata_rw(0, lba + dl, cnt, b, ata_base)) ||
            (ata_base2 && ata_rw(0, lba + dl, cnt, b, ata_base2)) ||
            ata_rw(0, lba + dl, cnt, b, 0x1F0) ||
@@ -81,6 +83,7 @@ static int ata_rd(uint32_t lba, uint8_t cnt, void *b) {
 
 static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) {
     uint32_t dl = data_lba;
+    if (data_port) return ata_rw(1, lba + dl, cnt, (void *)b, data_port);
     return (ata_base && ata_rw(1, lba + dl, cnt, (void *)b, ata_base)) ||
            (ata_base2 && ata_rw(1, lba + dl, cnt, (void *)b, ata_base2)) ||
            ata_rw(1, lba + dl, cnt, (void *)b, 0x1F0) ||
@@ -125,15 +128,15 @@ static int ata_init(void) {
 
 static uint32_t find_data_part(void) {
     uint8_t buf[512];
-    int ok = (ata_base && ata_rw(0, 0, 1, buf, ata_base)) ||
-             (ata_base2 && ata_rw(0, 0, 1, buf, ata_base2)) ||
-             ata_rw(0, 0, 1, buf, 0x1F0) ||
-             ata_rw(0, 0, 1, buf, 0x170);
-    if (!ok) return 0;
-    if (buf[510] != 0x55 || buf[511] != 0xAA) return 0;
-    for (int i = 0; i < 4; i++) {
-        uint8_t *e = buf + 446 + i * 16;
-        if (e[4] == 0xDA) return *(uint32_t *)(e + 8);
+    uint16_t ports[] = {ata_base, ata_base2, 0x1F0, 0x170};
+    for (int pi = 0; pi < 4; pi++) {
+        uint16_t p = ports[pi];
+        if (!p || !ata_rw(0, 0, 1, buf, p)) continue;
+        if (buf[510] != 0x55 || buf[511] != 0xAA) continue;
+        for (int i = 0; i < 4; i++) {
+            uint8_t *e = buf + 446 + i * 16;
+            if (e[4] == 0xDA) { data_port = p; return *(uint32_t *)(e + 8); }
+        }
     }
     return 0;
 }
@@ -176,6 +179,7 @@ static void pn(char *out, const char *path) {
     out[pos]=0;if(pos==1)out[0]='/',out[1]=0;
 }
 static void bp(char *out, fs_node_t *node) {
+    if (!node) { out[0]=0; return; }
     if (node->parent == node) { out[0]='/';out[1]=0;return; }
     bp(out, node->parent);
     int l = strlen(out);
@@ -185,8 +189,10 @@ static void bp(char *out, fs_node_t *node) {
 void fs_to_absolute(char *out, fs_node_t *cwd, const char *rel) {
     char abs[MAX_PATH], exp[MAX_PATH];
     const char *p = rel;
-    if (p[0]=='~'&&(p[1]=='/'||p[1]==0)){exp[0]='/';if(p[1]=='/')strcpy(exp+1,p+2);else exp[1]=0;p=exp;}
-    if (p[0]=='/') { strcpy(abs, p); }
+    if (p[0]=='~'&&(p[1]=='/'||p[1]==0)){exp[0]='/';if(p[1]=='/'){
+        int plen=strlen(p+2);if(plen<MAX_PATH-1){strcpy(exp+1,p+2);}else{exp[MAX_PATH-1]=0;strncpy(exp+1,p+2,MAX_PATH-2);}
+    }else exp[1]=0;p=exp;}
+    if (p[0]=='/') { int pl=strlen(p); if(pl<MAX_PATH)strcpy(abs,p); else{strncpy(abs,p,MAX_PATH-1);abs[MAX_PATH-1]=0;} }
     else { bp(abs, cwd); if(*p){int l=strlen(abs);if(l>1||abs[0]!='/')abs[l++]='/';abs[l]=0;int pl=strlen(p);if(l+pl<MAX_PATH)strcpy(abs+l,p);} }
     pn(out, abs);
 }
@@ -220,6 +226,7 @@ int fs_delete(fs_node_t *parent, const char *name) {
     return 0;
 }
 int fs_is_child_of(fs_node_t *parent, fs_node_t *child) {
+    if (!child) return 0;
     fs_node_t *p = child; int limit = 256;
     while (p != p->parent && limit--) { if (p == parent) return 1; p = p->parent; }
     return 0;

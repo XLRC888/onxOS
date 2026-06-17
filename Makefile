@@ -6,8 +6,11 @@ CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -fno-exceptions -Os -fno-builtin -Wall -Wextra -Wno-unused-variable \
          -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel -I build \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
-         -fno-asynchronous-unwind-tables -fmerge-all-constants
+         -fno-asynchronous-unwind-tables -fmerge-all-constants \
+         -mgeneral-regs-only -MMD -MP
 LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
+
+-include $(BUILD_DIR)/*.d
 
 SRC_DIR = src/kernel
 BUILD_DIR = build
@@ -74,7 +77,6 @@ $(ISO): $(BUILD_DIR)/onxos.elf | $(BUILD_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f src/kernel/bootblob.h
 
 HDD_QEMU = $(BUILD_DIR)/hdd_qemu.img
 
