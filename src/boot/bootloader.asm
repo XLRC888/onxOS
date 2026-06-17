@@ -41,8 +41,10 @@ times 64 db 0
 dw 0xAA55
 
 stage2:
+    jmp real_start
     kern_entry: dd 0x200020
 
+real_start:
     mov [st2_drive], dl
 
     mov si, dap_kern
@@ -64,6 +66,27 @@ stage2:
     in al, 0x92
     or al, 2
     out 0x92, al
+
+    push es
+    xor ax, ax
+    mov es, ax
+    mov ax, [es:0x7DFE]
+    not ax
+    mov [es:0x7E00], ax
+    push 0xFFFF
+    pop ds
+    cmp ax, [0x7E10]
+    pop es
+    jne a20_ok
+    mov al, 0xD1
+    out 0x64, al
+a20_wait:
+    in al, 0x64
+    test al, 2
+    jnz a20_wait
+    mov al, 0xDF
+    out 0x60, al
+a20_ok:
 
     lgdt [gdtr]
 

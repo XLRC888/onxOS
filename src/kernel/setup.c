@@ -26,7 +26,7 @@ void cmd_setup(fs_node_t *cwd) {
     vga_write("  kernel... ");
     uint32_t ksz = (uint32_t)&start_of_bss - 0x200000;
     uint32_t ksect = (ksz + 511) / 512;
-    if (ksect > 122) ksect = 122;
+    if (ksect > 122) { ksect = 122; vga_write("(truncated) "); }
     if (!fs_write_sectors(6, (uint8_t)ksect, (void*)0x200000)) {
         vga_writeln("FAIL");
         return;

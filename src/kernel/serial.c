@@ -18,8 +18,8 @@ void serial_init(void) {
     outb(COM1 + 0, 0xAE);
     if (inb(COM1 + 0) != 0xAE) return;
     outb(COM1 + 4, 0x0F);
-    char dummy;
-    while (serial_getchar(&dummy));
+    char dummy; int tries = 0;
+    while (serial_getchar(&dummy) && tries++ < 1000);
     serial_present = 1;
 }
 static int serial_received(void) {

@@ -51,18 +51,17 @@ char *strstr(const char *haystack, const char *needle) {
     return 0;
 }
 char *strchr(const char *s, int c) {
-    while (*s) {
+    for (;; s++) {
         if (*s == (char)c) return (char *)s;
-        s++;
+        if (!*s) return 0;
     }
-    return 0;
 }
 char *itoa(int value, char *str, int base) {
     char *p = str;
     if (base < 2 || base > 36) { *p = 0; return str; }
     if (value == 0) { *p++ = '0'; *p = 0; return str; }
     unsigned int num;
-    if (base == 10 && value < 0) { *p++ = '-'; num = (unsigned int)(-value); }
+    if (base == 10 && value < 0) { *p++ = '-'; num = -(unsigned int)value; }
     else num = (unsigned int)value;
     char temp[32]; int i = 0;
     while (num > 0) {
@@ -80,7 +79,10 @@ int atoi(const char *str) {
     if (str[i] == '-') { sign = -1; i++; }
     else if (str[i] == '+') i++;
     while (str[i] >= '0' && str[i] <= '9') {
-        res = res * 10 + (str[i] - '0');
+        int d = str[i] - '0';
+        if (res > 2147483647 / 10 || (res == 2147483647 / 10 && d > 2147483647 % 10))
+            return sign == 1 ? 2147483647 : -2147483648;
+        res = res * 10 + d;
         i++;
     }
     return sign * res;

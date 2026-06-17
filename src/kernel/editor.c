@@ -305,7 +305,9 @@ void editor_open(fs_node_t *cwd, const char *filename) {
         }
         else if(c=='\t'){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l+4<EC){for(int i=l;i>=ed.cc;i--)ln[i+4]=ln[i];
             ln[ed.cc]=' ';ln[ed.cc+1]=' ';ln[ed.cc+2]=' ';ln[ed.cc+3]=' ';ed.cc+=4;mod=1;}}
-        else if(c>=32&&c<127){char*ln=ed.l[ed.cr];int l=strlen(ln);if(l<EC-1){for(int i=l+1;i>ed.cc;i--)ln[i]=ln[i-1];
+        else if(c>=32&&c<127){char*ln=ed.l[ed.cr];int l=strlen(ln);
+            if(ed.cc>l)ed.cc=l;
+            if(l<EC-1){for(int i=l+1;i>ed.cc;i--)ln[i]=ln[i-1];
             ln[ed.cc]=c;ed.cc++;mod=1;}}
         if(mod)ed.dirty=1;
         if(ed.cc<0)ed.cc=0;

@@ -4,7 +4,7 @@
 #include "serial.h"
 static char kb[KEY_BUF_SIZE];
 static int bh = 0, bt = 0;
-static int ls = 0, rs = 0, caps = 0, ctrl = 0;
+static int ls = 0, rs = 0, caps = 0, ctrl = 0, caps_held = 0;
 static int bf = 0;
 static int ext = 0;
 static int ps2ok = 0;
@@ -57,13 +57,18 @@ static int mcs(const char *s, int ln) {
 static int ist(char ch) { return (ch>='A'&&ch<='Z')||(ch>='a'&&ch<='z')||ch=='~'; }
 static void sc(uint8_t s) {
     if (s == 0xF0) { bf = 1; return; }
-    if (bf) { bf = 0; ext = 0; return; }
+    if (bf) {
+        bf = 0; ext = 0;
+        if (s == 0x12 || s == 0x59) ls = 0;
+        if (s == 0x14 || s == 0x11) ctrl = 0;
+        if (s == 0x58) caps_held = 0;
+        return;
+    }
     if (s == 0xE0) { ext = 1; return; }
     if (ext) {
         ext = 0;
-        if (s & 0x80) return;
-        if (s == 0x1D) { ctrl = 1; return; }
         if (s == 0x9D) { ctrl = 0; return; }
+        if (s & 0x80) return;
         if (s == 0x48) { push((ls||rs)?KEY_SUP:KEY_UP); return; }
         if (s == 0x49) { push(KEY_PGUP); return; }
         if (s == 0x4B) { push((ls||rs)?KEY_SLEFT:KEY_LEFT); return; }
@@ -77,7 +82,8 @@ static void sc(uint8_t s) {
     if (s == 0x36) { rs = 1; return; }
     if (s == 0xAA) { ls = 0; return; }
     if (s == 0xB6) { rs = 0; return; }
-    if (s == 0x3A || s == 0x58) { caps = !caps; return; }
+    if (s == 0x3A || s == 0x58) { if (!caps_held) caps = !caps; caps_held = 1; return; }
+    if (s == 0xBA || s == 0x1A) { caps_held = 0; return; }
     if (s == 0x1D) { ctrl = 1; return; }
     if (s == 0x9D) { ctrl = 0; return; }
     if (s & 0x80) return;

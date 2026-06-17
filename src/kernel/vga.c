@@ -45,6 +45,7 @@ void vga_load_font(void) {
     outb(0x3CE, 0x06); outb(0x3CF, 0x05);
     outb(0x3CE, 0x08); outb(0x3CF, 0xFF);
     outb(0x3D4, 0x0A); outb(0x3D5, 0x00);
+    __asm__ volatile("" ::: "memory");
     volatile uint8_t *fp = (volatile uint8_t *)0xB8000;
     for (int i = 0; i < 256; i++) {
         int off = i * 32;
@@ -174,7 +175,7 @@ void vga_write_hex(uint32_t value) {
     char b[16]; b[0]='0';b[1]='x';
     char *p = b + 14; p[0]=0;
     for (int i=0;i<8;i++){int d=value&0xF;p[-1]=d<10?'0'+d:'a'+d-10;p--;value>>=4;}
-    vga_write(b+6);
+    vga_write(b);
 }
 void vga_scrollback_init(void) {
     if (sb) return;
@@ -211,7 +212,7 @@ static void sb_render(void) {
 void vga_scrollback_up(void) {
     if (!sb) return;
     if (sb_view == 0) memcpy(live_save, vb, VW * VH * 2);
-    if (sb_view < sb_cnt + VH - 1) { sb_view++; sb_render(); }
+    if (sb_view < (unsigned)(sb_cnt + VH - 1)) { sb_view++; sb_render(); }
 }
 void vga_scrollback_down(void) {
     if (sb_view > 1) { sb_view--; sb_render(); }
