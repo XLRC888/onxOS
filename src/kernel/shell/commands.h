@@ -42,4 +42,12 @@ void cmd_base64(fs_node_t *cwd, const char *arg);
 void cmd_uniq(fs_node_t *cwd, const char *arg);
 void cmd_setup(fs_node_t *cwd);
 void cmd_poweroff(void);
+void cmd_whoami(void);
+void cmd_hostname(void);
+void cmd_date(void);
+void cmd_shuf(fs_node_t *cwd, const char *arg);
+void cmd_banner(const char *arg);
+void cmd_cal(const char *arg);
+void cmd_factor(const char *arg);
+void cmd_ascii(void);
 #endif

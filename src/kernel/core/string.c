@@ -73,17 +73,18 @@ char *itoa(int value, char *str, int base) {
     *p = 0;
     return str;
 }
-int atoi(const char *str) {
-    int res = 0, sign = 1, i = 0;
+int atoi(const char *str, int *ok) {
+    int res = 0, sign = 1, i = 0, cnt = 0;
     while (str[i] == ' ') i++;
     if (str[i] == '-') { sign = -1; i++; }
     else if (str[i] == '+') i++;
     while (str[i] >= '0' && str[i] <= '9') {
-        int d = str[i] - '0';
+        int d = str[i] - '0'; cnt++;
         if (res > 2147483647 / 10 || (res == 2147483647 / 10 && d > 2147483647 % 10))
-            return sign == 1 ? 2147483647 : -2147483648;
+            { if (ok) *ok = 1; return sign == 1 ? 2147483647 : -2147483648; }
         res = res * 10 + d;
         i++;
     }
-    return sign * res;
+    if (ok) *ok = cnt > 0;
+    return cnt > 0 ? sign * res : 0;
 }

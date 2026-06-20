@@ -45,6 +45,14 @@ void cmd_help(void) {
         "  tree [dir]       display directory tree\n"
         "  tau <f>          text editor (esc to exit)\n"
         "  cowsay [msg]     ascii cow with a message\n"
+        "  whoami           print current user\n"
+        "  hostname         print system hostname\n"
+        "  date             show date/time from RTC\n"
+        "  shuf <f>         shuffle lines of a file\n"
+        "  banner <msg>     large ascii art banner\n"
+        "  cal [m] [y]      display a calendar\n"
+        "  factor <n>       factor a number into primes\n"
+        "  ascii            show printable ascii table\n"
         "  clear/ver/reboot clear screen / version / reboot\n"
         "  poweroff         save and shut down\n"
         "  help             you are here\n"
@@ -194,7 +202,7 @@ void cmd_hexdump(fs_node_t *cwd, const char *arg) {
     const char *c=nd->content;int l=0;while(l<MAX_CONTENT&&c[l])l++;
     int lines=0;
     for(int i=0;i<l;i+=16){
-        if(lines>=20){vga_write("-- more (space/enter=next, q=quit) --");char kc;while(keyboard_getchar(&kc)){}while(!keyboard_getchar(&kc)){}if(kc=='q'||kc=='Q'||kc==KEY_ESC){vga_putchar('\n');return;}vga_putchar('\n');lines=0;}
+        if(lines>=20){vga_write("-- more (space/enter=next, q=quit) --");char kc;int to=0;while(keyboard_getchar(&kc)){}while(!keyboard_getchar(&kc)){to++;if(to>500000){kc='q';break;}}if(kc=='q'||kc=='Q'||kc==KEY_ESC){vga_putchar('\n');return;}vga_putchar('\n');lines=0;}
         vga_write_hex(i);vga_write("  ");
         for(int j=0;j<16;j++){if(i+j<l)vga_write_hex((uint8_t)c[i+j]);else vga_write("  ");vga_write(" ");}
         vga_write(" |");for(int j=0;j<16&&i+j<l;j++){char ch=c[i+j];vga_putchar(ch>=32&&ch<127?ch:'.');}vga_writeln("|");
@@ -316,7 +324,7 @@ void cmd_tail(fs_node_t *cwd, const char *arg) {
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tail: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tail: not a file");return;}
     const char *c=nd->content;int lines[260],lc=1,wrap=0;
-    lines[0]=0;for(int i=0;c[i];i++){if(c[i]=='\n'){int idx=lc%260;lines[idx]=i+1;lc++;if(lc>260)wrap=1;}}
+    lines[0]=0;for(int i=0;c[i];i++){if(c[i]=='\n'){int idx=lc%260;lines[idx]=i+1;lc++;if(lc>=260)wrap=1;}}
     int avail=wrap?260:lc;if(n>avail)n=avail;
     int start=avail>=1?lines[(lc-n)%260]:0;
     for(int i=start;c[i];i++)vga_putchar(c[i]);
@@ -392,16 +400,21 @@ void cmd_sleep(const char *arg) {
     const char *p=arg;skip(&p);
     int ms=0;while(*p>='0'&&*p<='9')ms=ms*10+(*p++-'0');
     if(ms<=0)ms=1000;
-    for(volatile uint32_t i=0;i<(uint32_t)ms*8000;i++)__asm__ volatile("nop");
+    for(volatile uint32_t i=0;i<(uint32_t)ms*80000;i++)__asm__ volatile("nop");
 }
 void cmd_seq(const char *arg) {
-    const char *p=arg;int start=1,end=0;
-    char t1[32],t2[32];
+    const char *p=arg;int start=1,end=0,step=1;
+    char t1[32],t2[32],t3[32];
     if(!token(&p,t1,32)){vga_writeln("seq: need number");return;}
-    if(token(&p,t2,32)){start=atoi(t1);end=atoi(t2);}
-    else{end=atoi(t1);}
+    if(token(&p,t2,32)){
+        start=atoi(t1,0);
+        if(token(&p,t3,32)){end=atoi(t2,0);step=atoi(t3,0);}
+        else end=atoi(t2,0);
+    }
+    else{end=atoi(t1,0);}
+    if(step==0)step=1;
     if(start>end){int t=start;start=end;end=t;}
-    for(int i=start;i<=end;i++){vga_write_dec(i);vga_putchar('\n');}
+    for(int i=start;i<=end;i+=step){vga_write_dec(i);vga_putchar('\n');}
 }
 void cmd_rev(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
@@ -426,7 +439,7 @@ void cmd_tac(fs_node_t *cwd, const char *arg) {
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tac: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tac: not a file");return;}
     const char *c=nd->content;int lc=0,ci=0;
-    int ms=256,ml=256;char *buf=(char*)malloc(ms*ml);if(!buf){vga_writeln("tac: oom");return;}
+    int ms=128,ml=128;char *buf=(char*)malloc(ms*ml);if(!buf){vga_writeln("tac: oom");return;}
     for(int i=0;c[i]&&lc<ms;i++){
         if(c[i]=='\n'){buf[lc*ml+ci]=0;lc++;ci=0;}
         else if(ci<ml-1)buf[lc*ml+ci++]=c[i];
@@ -454,11 +467,122 @@ void cmd_uniq(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("uniq: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("uniq: not a file");return;}
-    const char *c=nd->content;char prev[256]="";char cur[256];int ci=0,first=1;
+    const char *c=nd->content;    char prev[256]="";char cur[256];int ci=0,first=1;
     for(int i=0;c[i];i++){
         if(c[i]=='\n'){cur[ci]=0;
             if(first||strcmp(cur,prev)!=0){vga_writeln(cur);strcpy(prev,cur);first=0;}
             ci=0;
         }else if(ci<255)cur[ci++]=c[i];
+    }
+}
+void cmd_whoami(void) { vga_writeln("root"); }
+void cmd_hostname(void) { vga_writeln("onxos"); }
+void cmd_date(void) {
+    outb(0x70,0x80|0x00);uint8_t se=inb(0x71);
+    outb(0x70,0x80|0x02);uint8_t mi=inb(0x71);
+    outb(0x70,0x80|0x04);uint8_t ho=inb(0x71);
+    outb(0x70,0x80|0x07);uint8_t da=inb(0x71);
+    outb(0x70,0x80|0x08);uint8_t mo=inb(0x71);
+    outb(0x70,0x80|0x09);uint8_t ye=inb(0x71);
+    se=(se&0x0F)+((se>>4)*10);mi=(mi&0x0F)+((mi>>4)*10);
+    ho=(ho&0x0F)+((ho>>4)*10);da=(da&0x0F)+((da>>4)*10);
+    mo=(mo&0x0F)+((mo>>4)*10);ye=(ye&0x0F)+((ye>>4)*10);
+    const char *mn[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+    vga_write("  ");vga_write(mn[mo-1]);vga_write(" ");vga_write_dec(da);vga_write(", 20");vga_write_dec(ye);vga_putchar(' ');
+    vga_write_dec(ho);vga_putchar(':');if(mi<10)vga_putchar('0');vga_write_dec(mi);
+    vga_putchar(':');if(se<10)vga_putchar('0');vga_write_dec(se);vga_putchar('\n');
+}
+static uint32_t sr=1;
+static uint32_t rn(void){sr=sr*1103515245+12345;return(sr/65536)%32768;}
+void cmd_shuf(fs_node_t *cwd,const char *arg){
+    char tk[MAX_NAME];const char *p=arg;
+    if(!token(&p,tk,MAX_NAME)){vga_writeln("shuf: missing operand");return;}
+    fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("shuf: not a file");return;}
+    const char *c=nd->content;char(*lines)[256]=(char(*)[256])malloc(256*256);
+    if(!lines){vga_writeln("shuf: oom");return;}int lc=0,ci=0;
+    for(int i=0;c[i]&&lc<256;i++){if(c[i]=='\n'){lines[lc][ci]=0;lc++;ci=0;}else if(ci<255)lines[lc][ci++]=c[i];}
+    if(ci>0&&lc<256){lines[lc][ci]=0;lc++;}
+    for(int i=lc-1;i>0;i--){int j=rn()%(i+1);char tmp[256];strcpy(tmp,lines[i]);strcpy(lines[i],lines[j]);strcpy(lines[j],tmp);}
+    for(int i=0;i<lc;i++)vga_writeln(lines[i]);free(lines);
+}
+void cmd_banner(const char *arg){
+    const char *p=arg;skip(&p);if(!*p){vga_writeln("banner: need text");return;}
+    static const uint16_t fd[36][5]={
+        {0x0E,0x11,0x1F,0x11,0x11},{0x1E,0x11,0x1E,0x11,0x1E},{0x0E,0x11,0x10,0x11,0x0E},
+        {0x1E,0x11,0x11,0x11,0x1E},{0x1F,0x10,0x1E,0x10,0x1F},{0x1F,0x10,0x1E,0x10,0x10},
+        {0x0E,0x11,0x10,0x13,0x0E},{0x11,0x11,0x1F,0x11,0x11},{0x0E,0x04,0x04,0x04,0x0E},
+        {0x07,0x02,0x02,0x12,0x0C},{0x11,0x12,0x1C,0x12,0x11},{0x10,0x10,0x10,0x10,0x1F},
+        {0x11,0x1B,0x15,0x11,0x11},{0x11,0x19,0x15,0x13,0x11},{0x0E,0x11,0x11,0x11,0x0E},
+        {0x1E,0x11,0x1E,0x10,0x10},{0x0E,0x11,0x11,0x13,0x0D},{0x1E,0x11,0x1E,0x12,0x11},
+        {0x0F,0x10,0x0E,0x01,0x1E},{0x1F,0x04,0x04,0x04,0x04},{0x11,0x11,0x11,0x11,0x0E},
+        {0x11,0x11,0x11,0x0A,0x04},{0x11,0x11,0x15,0x1B,0x11},{0x11,0x0A,0x04,0x0A,0x11},
+        {0x11,0x0A,0x04,0x04,0x04},{0x1F,0x02,0x04,0x08,0x1F},{0x0E,0x13,0x15,0x19,0x0E},
+        {0x04,0x0C,0x04,0x04,0x0E},{0x0E,0x11,0x02,0x04,0x1F},{0x0E,0x11,0x06,0x11,0x0E},
+        {0x02,0x06,0x0A,0x1F,0x02},{0x1F,0x10,0x1E,0x01,0x1E},{0x0E,0x10,0x1E,0x11,0x0E},
+        {0x1F,0x01,0x02,0x04,0x08},{0x0E,0x11,0x0E,0x11,0x0E},{0x0E,0x11,0x0F,0x01,0x0E}
+    };
+    int len=strlen(p);if(len>40)len=40;
+    for(int row=0;row<5;row++){
+        vga_write("  ");
+        for(int i=0;i<len;i++){char c=p[i];int idx=-1;
+            if(c>='A'&&c<='Z')idx=c-'A';
+            else if(c>='a'&&c<='z')idx=c-'a';
+            else if(c>='0'&&c<='9')idx=26+(c-'0');
+            else if(c==' '){vga_write("     ");continue;}
+            else{vga_write("     ");continue;}
+            uint16_t bits=fd[idx][row];
+            for(int b=4;b>=0;b--)vga_putchar((bits>>b)&1?'#':' ');
+            vga_putchar(' ');
+        }
+        vga_putchar('\n');
+    }
+}
+static int zdow(int d,int m,int y){
+    if(m<3){m+=12;y--;}int K=y%100,J=y/100;
+    return(d+(13*(m+1))/5+K+K/4+J/4+5*J)%7;
+}
+static int dim(int m,int y){
+    static const int d[]={31,28,31,30,31,30,31,31,30,31,30,31};
+    if(m==2&&((y%4==0&&y%100!=0)||y%400==0))return 29;
+    return d[m-1];
+}
+void cmd_cal(const char *arg){
+    const char *p=arg;skip(&p);int m=0,y=0;char t1[32],t2[32];
+    if(!token(&p,t1,32)){
+        outb(0x70,0x80|0x08);m=inb(0x71);outb(0x70,0x80|0x09);y=inb(0x71);
+        m=(m&0x0F)+((m>>4)*10);y=(y&0x0F)+((y>>4)*10)+2000;
+    }else{
+        m=atoi(t1,0);if(token(&p,t2,32))y=atoi(t2,0);
+        else{outb(0x70,0x80|0x09);y=inb(0x71);y=(y&0x0F)+((y>>4)*10)+2000;}
+    }
+    if(m<1||m>12){vga_writeln("cal: bad month");return;}
+    static const char *mn[]={"January","February","March","April","May","June","July","August","September","October","November","December"};
+    vga_write("     ");vga_write(mn[m-1]);vga_write(" ");vga_write_dec(y);vga_putchar('\n');
+    vga_writeln("  Su Mo Tu We Th Fr Sa");
+    int dmax=dim(m,y),start=(zdow(1,m,y)+6)%7;
+    vga_write("  ");for(int i=0;i<start;i++)vga_write("   ");
+    for(int d=1;d<=dmax;d++){
+        if(d<10)vga_putchar(' ');vga_write_dec(d);vga_putchar(' ');
+        if((start+d)%7==0&&d<dmax){vga_putchar('\n');vga_write("  ");}
+    }
+    vga_putchar('\n');
+}
+void cmd_factor(const char *arg){
+    const char *p=arg;skip(&p);int n=0;
+    while(*p>='0'&&*p<='9')n=n*10+(*p++-'0');
+    if(n<2){vga_writeln("factor: need >=2");return;}
+    vga_write_dec(n);vga_write(":");int t=n;
+    for(int i=2;i*i<=t;i++){while(t%i==0){vga_write(" ");vga_write_dec(i);t/=i;}}
+    if(t>1){vga_write(" ");vga_write_dec(t);}vga_putchar('\n');
+}
+void cmd_ascii(void){
+    for(int i=32;i<=126;i+=8){
+        for(int j=0;j<8&&i+j<=126;j++){int v=i+j;
+            vga_write(" ");if(v<100)vga_putchar(' ');vga_write_dec(v);vga_putchar(' ');
+            char b[16];itoa(v,b,16);if(b[1]==0)vga_putchar('0');vga_write(b);vga_putchar(' ');
+            if(v==32)vga_write("spc ");
+            else{vga_putchar(v);vga_write("   ");}
+        }
+        vga_putchar('\n');
     }
 }

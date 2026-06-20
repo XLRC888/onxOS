@@ -7,7 +7,7 @@
 #define VM 0xB8000
 #define VW 80
 #define VH 25
-#define SB_ROWS 1024
+#define SB_ROWS 256
 static uint16_t *vb = (uint16_t *)VM;
 static int cr = 0, cc = 0;
 static uint8_t fg = COLOR_LIGHT_GREY, bg = COLOR_BLACK;
@@ -62,6 +62,7 @@ void vga_load_font(void) {
     outb(0x3D4, 0x0A); outb(0x3D5, cr0a);
 }
 
+/* dead code - do not call on real hw with grub */
 void vga_hw_reset(void) {
     outb(0x3C2, 0x67);
     outb(0x3C4, 0x00); outb(0x3C5, 0x03);
@@ -113,6 +114,7 @@ void vga_hw_reset(void) {
 void vga_init(void) {
     memcpy(grub_save, vb, VW * VH * 2);
     vga_clear(); uc();
+    vga_load_font();
 }
 void vga_clear(void) {
     uint8_t c = mc();

@@ -12,6 +12,7 @@ typedef struct fs_node {
     char name[MAX_NAME];
     file_type_t type;
     char content[MAX_CONTENT];
+    int content_size;
     struct fs_node *parent;
     struct fs_node *children[MAX_CHILDREN];
     int child_count;

@@ -12,5 +12,5 @@ char *strcat(char *dest, const char *src);
 char *strchr(const char *s, int c);
 char *strstr(const char *haystack, const char *needle);
 char *itoa(int value, char *str, int base);
-int atoi(const char *str);
+int atoi(const char *str, int *ok);
 #endif

@@ -17,7 +17,7 @@ int hc = 0;
 static int hi = -1;
 static int pr, pc;
 static const char *gp(void) {
-    static char p[128]; char abs[256];
+    static char p[512]; char abs[256];
     fs_to_absolute(abs, cd, "");
     p[0]=0; strcat(p,abs); strcat(p," $ "); return p;
 }
@@ -36,7 +36,7 @@ static void tc_match(const char *w,int fw){
     const char *pf=w;fs_node_t *d=cd;
     if(sl>=0){char dp[MAX_PATH];if(sl==0)strcpy(dp,"/");else{strncpy(dp,w,sl);dp[sl]=0;}d=fs_resolve(dp,cd);if(!d||d->type!=FT_DIR)goto err;pf=w+sl+1;}
     int pl=strlen(pf);tc.cnt=0;
-    if(fw&&sl<0){static const char *cs[]={"help","clear","pwd","ls","cd","mkdir","touch","rm","rmdir","cat","echo","cp","mv","stat","hex","ver","reboot","tau","tree","find","grep","head","cowsay","poweroff","tail","wc","history","uname","df","du","sort","yes","sleep","seq","rev","which","tac","base64","uniq","setup",0};for(int i=0;cs[i]&&tc.cnt<MA;i++){if(!pf[0]||strncmp(cs[i],pf,pl)==0){char b[LB];strcpy(b,cs[i]);strcpy(tc.m[tc.cnt++],b);}}}
+    if(fw&&sl<0){static const char *cs[]={"help","clear","pwd","ls","cd","mkdir","touch","rm","rmdir","cat","echo","cp","mv","stat","hex","ver","reboot","tau","tree","find","grep","head","cowsay","poweroff","tail","wc","history","uname","df","du","sort","yes","sleep","seq","rev","which","tac","base64","uniq","setup","whoami","hostname","date","shuf","banner","cal","factor","ascii",0};for(int i=0;cs[i]&&tc.cnt<MA;i++){if(!pf[0]||strncmp(cs[i],pf,pl)==0){char b[LB];strcpy(b,cs[i]);strcpy(tc.m[tc.cnt++],b);}}}
     if(!fw||sl>=0){for(int i=0;i<d->child_count&&tc.cnt<MA;i++){if(!pf[0]||strncmp(d->children[i]->name,pf,pl)==0){char b[LB];if(sl>=0){strncpy(b,w,sl+1);b[sl+1]=0;int rem=LB-sl-2;char*nm=d->children[i]->name;int nml=strlen(nm);if(nml<rem){strcpy(b+sl+1,nm);if(d->children[i]->type==FT_DIR)strcat(b,"/");strcpy(tc.m[tc.cnt++],b);}}else{strcpy(b,d->children[i]->name);if(d->children[i]->type==FT_DIR)strcat(b,"/");strcpy(tc.m[tc.cnt++],b);}}}}
     return;
     err:tc.cnt=0;
@@ -82,14 +82,14 @@ static void rl(const char *nl, int ol) {
     for(int i=nl2;i<ol;i++)serial_putchar('\b');
     strcpy(lb,nl);lp=nl2;
 }
-static int exec_hist(const char *s) {
+static int exec_hist(char *s) {
     if(s[0]!='!'||s[1]==0)return 0;
-    if(s[1]=='!'){if(hc==0)return 0;strcpy((char*)s,hist[hc-1]);return 1;}
+    if(s[1]=='!'){if(hc==0)return 0;strcpy(s,hist[hc-1]);return 1;}
     int n=0;for(int i=1;s[i];i++){if(s[i]>='0'&&s[i]<='9')n=n*10+(s[i]-'0');else return 0;}
     if(n<1||n>hc)return 0;
     const char *cmd = hist[n-1];
     char buf[LB];strcpy(buf,cmd);
-    strcpy((char*)s,buf);
+    strcpy(s,buf);
     return 1;
 }
 static void exec(const char *cmd) {
@@ -144,6 +144,14 @@ static void exec(const char *cmd) {
     else if(strcmp(a[0],"uniq")==0)cmd_uniq(cd,ac>1?a[1]:"");
     else if(strcmp(a[0],"setup")==0)cmd_setup(cd);
     else if(strcmp(a[0],"poweroff")==0)cmd_poweroff();
+    else if(strcmp(a[0],"whoami")==0)cmd_whoami();
+    else if(strcmp(a[0],"hostname")==0)cmd_hostname();
+    else if(strcmp(a[0],"date")==0)cmd_date();
+    else if(strcmp(a[0],"shuf")==0)cmd_shuf(cd,ac>1?a[1]:"");
+    else if(strcmp(a[0],"banner")==0){const char *ba=ac>1?cmd+strlen(a[0]):"";while(*ba==' ')ba++;cmd_banner(ba);}
+    else if(strcmp(a[0],"cal")==0){const char *ca=ac>1?cmd+strlen(a[0]):"";while(*ca==' ')ca++;cmd_cal(ca);}
+    else if(strcmp(a[0],"factor")==0){const char *fa=ac>1?cmd+strlen(a[0]):"";while(*fa==' ')fa++;cmd_factor(fa);}
+    else if(strcmp(a[0],"ascii")==0)cmd_ascii();
     else if(a[0][0]=='!'){}else{vga_write("onx: unknown: ");vga_writeln(a[0]);}
 }
 void shell_init(void) { cd=fs_get_root(); hc=0; hi=-1; vga_scrollback_init(); }

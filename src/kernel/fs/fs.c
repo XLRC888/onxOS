@@ -33,11 +33,17 @@ static uint32_t pci_read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off) {
     outl(0xCF8, addr);
     return inl(0xCFC);
 }
+static void pci_write(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off, uint32_t val) {
+    uint32_t addr = (uint32_t)0x80000000 | ((uint32_t)bus << 16) | ((uint32_t)dev << 11) | ((uint32_t)func << 8) | (off & 0xFC);
+    outl(0xCF8, addr);
+    outl(0xCFC, val);
+}
 
 static int ata_poll(uint16_t base) {
     for (int i = 0; i < 500000; i++) {
         uint8_t st = inb(base + 7);
         if (st & 1) return 0;
+        if (st & 0x20) return 0;
         if (!(st & 0x80) && (st & 8)) return 1;
         __asm__ volatile ("pause");
     }
@@ -54,9 +60,9 @@ static int ata_flush(uint16_t base) {
     return 0;
 }
 
-static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base) {
+static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base, int drive) {
     if (!base) return 0;
-    outb(base + 6, 0xE0 | ((lba >> 24) & 0x0F));
+    outb(base + 6, 0xE0 | (drive ? 0x10 : 0) | ((lba >> 24) & 0x0F));
     outb(base + 2, cnt);
     outb(base + 3, lba & 0xFF);
     outb(base + 4, (lba >> 8) & 0xFF);
@@ -73,39 +79,36 @@ static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base) {
 }
 
 static int ata_rd(uint32_t lba, uint8_t cnt, void *b) {
-    uint32_t dl = data_lba;
-    if (data_port) return ata_rw(0, lba + dl, cnt, b, data_port);
-    return (ata_base && ata_rw(0, lba + dl, cnt, b, ata_base)) ||
-           (ata_base2 && ata_rw(0, lba + dl, cnt, b, ata_base2)) ||
-           ata_rw(0, lba + dl, cnt, b, 0x1F0) ||
-           ata_rw(0, lba + dl, cnt, b, 0x170);
+    if (data_port) return ata_rw(0, lba + data_lba, cnt, b, data_port, 0);
+    return (ata_base && ata_rw(0, lba, cnt, b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2, 0)) ||
+           ata_rw(0, lba, cnt, b, 0x1F0, 0) ||
+           ata_rw(0, lba, cnt, b, 0x170, 0);
 }
 
 static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) {
-    uint32_t dl = data_lba;
-    if (data_port) return ata_rw(1, lba + dl, cnt, (void *)b, data_port);
-    return (ata_base && ata_rw(1, lba + dl, cnt, (void *)b, ata_base)) ||
-           (ata_base2 && ata_rw(1, lba + dl, cnt, (void *)b, ata_base2)) ||
-           ata_rw(1, lba + dl, cnt, (void *)b, 0x1F0) ||
-           ata_rw(1, lba + dl, cnt, (void *)b, 0x170);
+    if (data_port) return ata_rw(1, lba + data_lba, cnt, (void *)b, data_port, 0);
+    return (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2, 0)) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x1F0, 0) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x170, 0);
 }
 
 static int ata_init(void) {
-    uint16_t b1 = 0, b2 = 0;
-    for (int d = 0; d < 32; d++) for (int f = 0; f < 8; f++) {
+    uint16_t b1 = 0, b2 = 0, found = 0;
+    for (int d = 0; d < 32 && !found; d++) for (int f = 0; f < 8; f++) {
         uint32_t id = pci_read(0, d, f, 0);
         if (id == 0xFFFFFFFF) { if (f == 0) break; continue; }
         uint16_t cc = (uint16_t)(pci_read(0, d, f, 8) >> 16);
         if (cc == 0x0101 || cc == 0x0100 || cc == 0x0106 || cc == 0x0104) {
             uint32_t cmd = pci_read(0, d, f, 4);
             cmd |= 0x07;
-            outl(0xCF8, (uint32_t)(0x80000000 | (d << 11) | (f << 8) | 4));
-            outl(0xCFC, cmd);
+            pci_write(0, d, f, 4, cmd);
             uint32_t bar0 = pci_read(0, d, f, 0x10);
             uint32_t bar2 = pci_read(0, d, f, 0x18);
             if ((bar0 & 1) && (bar0 & 0xFFF8)) b1 = (uint16_t)(bar0 & 0xFFF8);
             if ((bar2 & 1) && (bar2 & 0xFFF8)) b2 = (uint16_t)(bar2 & 0xFFF8);
-            break;
+            found = 1; break;
         }
     }
     if (!b1) b1 = 0x1F0;
@@ -127,16 +130,19 @@ static int ata_init(void) {
 }
 
 static uint32_t find_data_part(void) {
-    uint8_t buf[512];
+    uint8_t buf[512] __attribute__((aligned(2)));
     uint16_t ports[] = {ata_base, ata_base2, 0x1F0, 0x170};
     for (int pi = 0; pi < 4; pi++) {
         uint16_t p = ports[pi];
-        if (!p || !ata_rw(0, 0, 1, buf, p)) continue;
+        if (!p || !ata_rw(0, 0, 1, buf, p, 0)) continue;
         if (buf[510] != 0x55 || buf[511] != 0xAA) continue;
+        uint8_t valid = 0;
         for (int i = 0; i < 4; i++) {
             uint8_t *e = buf + 446 + i * 16;
             if (e[4] == 0xDA) { data_port = p; return *(uint32_t *)(e + 8); }
+            if (e[4] != 0 || e[0] != 0) valid = 1;
         }
+        if (!valid) continue;
     }
     return 0;
 }
@@ -146,6 +152,7 @@ void fs_init(void) {
     root_node.type = FT_DIR;
     root_node.parent = &root_node;
     root_node.child_count = 0;
+    root_node.content_size = 0;
     root_node.content[0] = 0;
     ata_init();
     serial_write("ata ");serial_write(ata_base?"ok":"no");serial_write(" ");serial_write(ata_base2?"ok":"no");serial_write("\n");
@@ -157,6 +164,7 @@ int fs_ata_present(void) { return ata_ok; }
 fs_node_t *fs_get_root(void) { return &root_node; }
 static void pn(char *out, const char *path) {
     char buf[MAX_PATH];
+    if (strlen(path) >= MAX_PATH) { out[0] = '/'; out[1] = 0; return; }
     strcpy(buf, path);
     char *parts[MAX_PATH];
     int np = 0;
@@ -184,7 +192,8 @@ static void bp(char *out, fs_node_t *node) {
     bp(out, node->parent);
     int l = strlen(out);
     if (l>1||out[0]!='/'){out[l]='/';out[++l]=0;}
-    if (l + strlen(node->name) < MAX_PATH) strcpy(out+l, node->name);
+    if (l + strlen(node->name) >= MAX_PATH) { out[0]=0; return; }
+    strcpy(out+l, node->name);
 }
 void fs_to_absolute(char *out, fs_node_t *cwd, const char *rel) {
     char abs[MAX_PATH], exp[MAX_PATH];
@@ -207,8 +216,9 @@ static fs_node_t *fn(const char *name, file_type_t t, fs_node_t *parent) {
     if (parent->child_count>=MAX_CHILDREN||!name||!name[0]||strchr(name,'/')||fs_find(parent,name))return 0;
     fs_node_t *n=(fs_node_t*)malloc(sizeof(fs_node_t));
     if(!n)return 0;
+    memset(n, 0, sizeof(fs_node_t));
     strncpy(n->name,name,MAX_NAME-1);n->name[MAX_NAME-1]=0;
-    n->type=t;n->parent=parent;n->child_count=0;n->content[0]=0;
+    n->type=t;n->parent=parent;n->child_count=0;n->content_size=0;
     parent->children[parent->child_count++]=n;
     return n;
 }
@@ -263,7 +273,8 @@ static void spack(fs_node_t *nodes[], int count, uint8_t *buf, int i) {
     node_meta_t *m = (node_meta_t *)buf;
     strncpy(m->name, nodes[i]->name, 63); m->name[63] = 0;
     m->type = (uint32_t)nodes[i]->type;
-    m->content_size = strlen(nodes[i]->content);
+    uint32_t cs = (uint32_t)(nodes[i]->content_size > 0 ? nodes[i]->content_size : (int)strlen(nodes[i]->content));
+    m->content_size = cs > MAX_CONTENT - 1 ? MAX_CONTENT - 1 : cs;
     m->parent_index = fi(nodes, count, nodes[i]->parent);
     m->child_count = nodes[i]->child_count;
     for (int j = 0; j < (int)nodes[i]->child_count; j++)
@@ -273,16 +284,16 @@ static void spack(fs_node_t *nodes[], int count, uint8_t *buf, int i) {
 }
 
 int fs_write_sectors(uint32_t lba, uint8_t cnt, const void *b) {
-    return (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base)) ||
-           (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2)) ||
-           ata_rw(1, lba, cnt, (void *)b, 0x1F0) ||
-           ata_rw(1, lba, cnt, (void *)b, 0x170);
+    return (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2, 0)) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x1F0, 0) ||
+           ata_rw(1, lba, cnt, (void *)b, 0x170, 0);
 }
 int fs_read_sectors(uint32_t lba, uint8_t cnt, void *b) {
-    return (ata_base && ata_rw(0, lba, cnt, b, ata_base)) ||
-           (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2)) ||
-           ata_rw(0, lba, cnt, b, 0x1F0) ||
-           ata_rw(0, lba, cnt, b, 0x170);
+    return (ata_base && ata_rw(0, lba, cnt, b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2, 0)) ||
+           ata_rw(0, lba, cnt, b, 0x1F0, 0) ||
+           ata_rw(0, lba, cnt, b, 0x170, 0);
 }
 void fs_set_data_lba(uint32_t lba) { data_lba = lba; }
 uint32_t fs_get_data_lba(void) { return data_lba; }
@@ -307,35 +318,39 @@ int fs_save_disk(void) {
             if (probe) { data_lba = probe; fs_set_data_lba(probe); }
         }
         if (data_lba == 0) {
-            uint8_t mbr[512]; int got = ata_rw(0, 0, 1, mbr, ata_base ? ata_base : 0x1F0);
-            if (ata_base2 && !got) got = ata_rw(0, 0, 1, mbr, ata_base2);
+            uint16_t b = ata_base ? ata_base : (ata_base2 ? ata_base2 : 0x1F0);
+            uint8_t mbr[512] __attribute__((aligned(2))); int got = ata_rw(0, 0, 1, mbr, b, 0);
             serial_write("fs_save: mbr got=");serial_write(got?"y":"n");serial_write("\n");
+            int found_slot = -1;
             if (got && mbr[510] == 0x55 && mbr[511] == 0xAA) {
                 for (int p = 0; p < 4; p++) {
                     uint8_t *e = mbr + 446 + p * 16;
-                    if (*(uint32_t*)e==0&&*(uint32_t*)(e+4)==0&&*(uint32_t*)(e+8)==0&&*(uint32_t*)(e+12)==0) {
-                        uint32_t dl = 128 + p * 2048;
-                        e[0] = 0x80; e[4] = 0xDA;
-                        e[8] = dl & 0xFF; e[9] = (dl >> 8) & 0xFF;
-                        e[10] = (dl >> 16) & 0xFF; e[11] = (dl >> 24) & 0xFF;
-                        e[12] = 0; e[13] = 8; e[14] = 0; e[15] = 0;
-                        uint16_t b = ata_base ? ata_base : 0x1F0;
-                        ata_rw(1, 0, 1, mbr, b);
-                        data_lba = dl; fs_set_data_lba(dl);
-                        break;
+                    if (e[4]==0xDA) { found_slot = p; break; }
+                }
+                if (found_slot < 0) {
+                    for (int p = 0; p < 4; p++) {
+                        uint8_t *e = mbr + 446 + p * 16;
+                        if (e[0]==0&&e[4]==0&&*(uint32_t*)(e+8)==0&&*(uint32_t*)(e+12)==0) { found_slot = p; break; }
                     }
                 }
-            } else if (got) {
-                memset(mbr, 0, 512);
-                mbr[446] = 0x80; mbr[450] = 0xDA;
-                uint32_t dl = 128;
-                mbr[454] = dl & 0xFF; mbr[455] = (dl >> 8) & 0xFF;
-                mbr[456] = (dl >> 16) & 0xFF; mbr[457] = (dl >> 24) & 0xFF;
-                mbr[458] = 0; mbr[459] = 8; mbr[460] = 0; mbr[461] = 0;
-                mbr[510] = 0x55; mbr[511] = 0xAA;
-                uint16_t b = ata_base ? ata_base : 0x1F0;
-                ata_rw(1, 0, 1, mbr, b);
-                data_lba = dl; fs_set_data_lba(dl);
+            }
+            if (found_slot >= 0) {
+                uint8_t *e = mbr + 446 + found_slot * 16;
+                if (e[4] != 0xDA) {
+                    uint32_t dl = 128 + found_slot * 2048;
+                    if (dl + 2048 > 0xFFFFFFF) { serial_write("fs_save: lba overflow\n"); ok = 0; goto out; }
+                    e[0] = 0x80; e[4] = 0xDA;
+                    e[8] = dl & 0xFF; e[9] = (dl >> 8) & 0xFF;
+                    e[10] = (dl >> 16) & 0xFF; e[11] = (dl >> 24) & 0xFF;
+                    e[12] = 0; e[13] = 8; e[14] = 0; e[15] = 0;
+                    if (got || 1) { mbr[510] = 0x55; mbr[511] = 0xAA; }
+                    ata_rw(1, 0, 1, mbr, b, 0);
+                    data_lba = dl; fs_set_data_lba(dl); data_port = b;
+                } else {
+                    data_lba = *(uint32_t*)(e+8); fs_set_data_lba(data_lba); data_port = b;
+                }
+            } else {
+                serial_write("fs_save: no slot\n"); ok = 0; goto out;
             }
             if (data_lba == 0) { serial_write("fs_save: no dlba\n"); ok = 0; goto out; }
         }
@@ -375,6 +390,7 @@ static int dld(sector_read_t rd) {
             uint32_t raw = metas[i].content_size;
             int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
             memcpy(loaded[i]->content, buf + ATA_SECTOR_SIZE, sz); loaded[i]->content[sz] = 0;
+            loaded[i]->content_size = sz;
         }
     }
     free(buf);
@@ -416,6 +432,7 @@ int fs_load_from_memory(void *data) {
             uint32_t raw = metas[i].content_size;
             int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
             memcpy(loaded[i]->content, (uint8_t *)data + off + 512, sz); loaded[i]->content[sz] = 0;
+            loaded[i]->content_size = sz;
         }
     }
     for (int i = 0; i < count; i++) {

@@ -44,6 +44,7 @@ void *malloc(uint32_t size) {
 }
 void free(void *ptr) {
     if (!ptr) return;
+    if ((uint8_t*)ptr < (uint8_t*)heap_base || (uint8_t*)ptr >= (uint8_t*)heap_base + heap_total) return;
     block_t *block = (block_t *)((uint8_t *)ptr - BLOCK_SIZE);
     block->free = 1;
     block_t *curr = free_list;

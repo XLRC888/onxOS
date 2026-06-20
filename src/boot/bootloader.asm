@@ -109,7 +109,7 @@ pm_entry:
 
     mov esi, 0x10000
     mov edi, 0x200000
-    mov ecx, 62464
+    mov ecx, 124928
     cld
     rep movsb
 
@@ -120,7 +120,7 @@ BITS 16
 st2_drive: db 0
 dap_kern:
     db 0x10, 0
-    dw 122
+    dw 244
     dw 0x0000
     dw 0x1000
     dd 6

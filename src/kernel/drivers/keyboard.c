@@ -105,11 +105,19 @@ static void sc(uint8_t s) {
 }
 static void cb(registers_t *r) { (void)r; if (inb(0x64) & 1) sc(inb(0x60)); }
 void keyboard_init(void) {
-    for (int i = 0; i < 100; i++) { if (inb(0x64) & 1) inb(0x60); else break; }
+    while (inb(0x64) & 1) inb(0x60);
     outb(0x64, 0xAE);
     for (int i = 0; i < 100000; i++) __asm__ volatile ("pause");
-    for (int i = 0; i < 100; i++) { if (inb(0x64) & 1) inb(0x60); else break; }
+    outb(0x64, 0x20);
+    for (int i = 0; i < 100000; i++) __asm__ volatile ("pause");
+    uint8_t cmd = inb(0x60);
+    outb(0x64, 0x60);
+    for (int i = 0; i < 100000; i++) __asm__ volatile ("pause");
+    outb(0x60, cmd | 0x40);
+    for (int i = 0; i < 100000; i++) __asm__ volatile ("pause");
+    while (inb(0x64) & 1) inb(0x60);
     isr_register_callback(1, cb);
+    outb(0x21, 0xF9);
     ps2ok = 1;
 }
 int keyboard_getchar(char *c) {
