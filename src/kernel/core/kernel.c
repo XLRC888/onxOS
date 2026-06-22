@@ -7,20 +7,39 @@
 #include "fs.h"
 #include "shell.h"
 #include "string.h"
+#include "port.h"
 #define HEAP_SIZE 0x100000
 extern uint32_t end_of_kernel;
 
+uint32_t uefi_systab;
+
 static void parse_mb2_tags(uint32_t mbi_addr, uint32_t *mod_start, uint32_t *mod_end) {
     *mod_start = 0; *mod_end = 0;
+    uefi_systab = 0;
     if (!mbi_addr) return;
     uint32_t total_size = *(uint32_t *)mbi_addr;
     uint32_t *tag = (uint32_t *)(mbi_addr + 8);
     while ((uint32_t)tag < mbi_addr + total_size) {
         if (tag[0] == 3) { *mod_start = tag[2]; *mod_end = tag[3]; }
+        if (tag[0] == 9) { uefi_systab = tag[2]; }
         if (tag[0] == 0) break;
         uint32_t sz = tag[1];
         tag = (uint32_t *)((uint8_t *)tag + (sz < 8 ? 8 : (sz + 7) & ~7));
     }
+}
+
+uint32_t acpi_find_rsdp_uefi(void) {
+    if (!uefi_systab) return 0;
+    uint8_t *st = (uint8_t *)uefi_systab;
+    uint32_t entries = *(uint32_t *)(st + 0x40);
+    uint8_t *ent = st + 0x48;
+    for (uint32_t i = 0; i < entries; i++) {
+        uint32_t addr = *(uint32_t *)ent;
+        if (*(uint32_t *)addr == 0x20445352 && *(uint32_t *)(addr + 4) == 0x20505452)
+            return addr;
+        ent += 0x18;
+    }
+    return 0;
 }
 
 void kernel_early(unsigned int magic, unsigned int mbi_addr) {

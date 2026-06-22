@@ -235,10 +235,13 @@ static uint32_t acpi_find_fadt(uint32_t rsdp) {
         if(t&&*(uint32_t*)t==0x50434146)return t;}
     return 0;
 }
+extern uint32_t uefi_systab;
+uint32_t acpi_find_rsdp_uefi(void);
 void cmd_poweroff(void) {
     vga_write("saving...");vga_writeln(fs_save_disk()?"ok":"fail");
     serial_write("poweroff\n");
     uint32_t rsdp=acpi_find_rsdp();
+    if(!rsdp)rsdp=acpi_find_rsdp_uefi();
     if(rsdp){uint32_t fadt=acpi_find_fadt(rsdp);
         if(fadt){uint32_t pm1a=*(uint32_t*)(fadt+64);uint32_t pm1b=*(uint32_t*)(fadt+68);
             serial_write("acpi pm1a=");serial_write_dec(pm1a);serial_write(" pm1b=");serial_write_dec(pm1b);serial_write("\n");
