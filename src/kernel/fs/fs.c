@@ -79,19 +79,21 @@ static int ata_rw(int wr, uint32_t lba, uint8_t cnt, void *buf, uint16_t base, i
 }
 
 static int ata_rd(uint32_t lba, uint8_t cnt, void *b) {
-    if (data_port) return ata_rw(0, lba + data_lba, cnt, b, data_port, 0);
-    return (ata_base && ata_rw(0, lba, cnt, b, ata_base, 0)) ||
-           (ata_base2 && ata_rw(0, lba, cnt, b, ata_base2, 0)) ||
-           ata_rw(0, lba, cnt, b, 0x1F0, 0) ||
-           ata_rw(0, lba, cnt, b, 0x170, 0);
+    uint32_t abs_lba = lba + data_lba;
+    if (data_port) return ata_rw(0, abs_lba, cnt, b, data_port, 0);
+    return (ata_base && ata_rw(0, abs_lba, cnt, b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(0, abs_lba, cnt, b, ata_base2, 0)) ||
+           ata_rw(0, abs_lba, cnt, b, 0x1F0, 0) ||
+           ata_rw(0, abs_lba, cnt, b, 0x170, 0);
 }
 
 static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) {
-    if (data_port) return ata_rw(1, lba + data_lba, cnt, (void *)b, data_port, 0);
-    return (ata_base && ata_rw(1, lba, cnt, (void *)b, ata_base, 0)) ||
-           (ata_base2 && ata_rw(1, lba, cnt, (void *)b, ata_base2, 0)) ||
-           ata_rw(1, lba, cnt, (void *)b, 0x1F0, 0) ||
-           ata_rw(1, lba, cnt, (void *)b, 0x170, 0);
+    uint32_t abs_lba = lba + data_lba;
+    if (data_port) return ata_rw(1, abs_lba, cnt, (void *)b, data_port, 0);
+    return (ata_base && ata_rw(1, abs_lba, cnt, (void *)b, ata_base, 0)) ||
+           (ata_base2 && ata_rw(1, abs_lba, cnt, (void *)b, ata_base2, 0)) ||
+           ata_rw(1, abs_lba, cnt, (void *)b, 0x1F0, 0) ||
+           ata_rw(1, abs_lba, cnt, (void *)b, 0x170, 0);
 }
 
 static int ata_init(void) {

@@ -54,8 +54,14 @@ $(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
 	python3 tools/patch_boot.py $(BUILD_DIR)/bootloader.bin --verify $@
 
 $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
-	objcopy -O binary $< $@
-	@echo "Built: $(BUILD_DIR)/onxos.bin"
+	objcopy -O binary $< $(BUILD_DIR)/onxos_tmp.bin
+	python3 tools/patch_boot.py $(BUILD_DIR)/bootloader.bin --patch $(BUILD_DIR)/onxos_tmp.bin --header $(BUILD_DIR)/bootblob.h
+	rm -f $(BUILD_DIR)/setup.o
+	$(CC) $(CFLAGS) -c src/kernel/core/setup.c -o $(BUILD_DIR)/setup.o
+	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/onxos.elf $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
+	objcopy -O binary $(BUILD_DIR)/onxos.elf $@
+	rm -f $(BUILD_DIR)/onxos_tmp.bin
+	@echo "Built: $@"
 	@ls -lh $@
 
 ISODIR = $(BUILD_DIR)/isoroot
