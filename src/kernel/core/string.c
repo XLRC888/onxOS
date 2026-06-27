@@ -56,6 +56,11 @@ char *strchr(const char *s, int c) {
         if (!*s) return 0;
     }
 }
+char *strrchr(const char *s, int c) {
+    const char *last = 0;
+    do { if (*s == (char)c) last = s; } while (*s++);
+    return (char *)last;
+}
 char *itoa(int value, char *str, int base) {
     char *p = str;
     if (base < 2 || base > 36) { *p = 0; return str; }

@@ -2,13 +2,15 @@
 #include "isr.h"
 #include "port.h"
 #include "serial.h"
+#include "string.h"
 static char kb[KEY_BUF_SIZE];
 static int bh = 0, bt = 0;
 static int ls = 0, rs = 0, caps = 0, ctrl = 0, caps_held = 0;
 static int bf = 0;
 static int ext = 0;
 static int ps2ok = 0;
-static const char sa[] = {
+
+static const unsigned char en_norm[128] = {
     0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
     0,'a','s','d','f','g','h','j','k','l',';','\'','`',
@@ -16,7 +18,7 @@ static const char sa[] = {
     0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
-static const char ss[] = {
+static const unsigned char en_shift[128] = {
     0,27,'!','@','#','$','%','^','&','*','(',')','_','+','\b',
     '\t','Q','W','E','R','T','Y','U','I','O','P','{','}','\n',
     0,'A','S','D','F','G','H','J','K','L',':','"','~',
@@ -24,6 +26,118 @@ static const char ss[] = {
     0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
+
+static const unsigned char trq_norm[128] = {
+    0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
+    '\t','q','w','e','r','t','y','u','i','o','p','g','\x81','\n',
+    0,'a','s','d','f','g','h','j','k','l','s','i','`',
+    0,'\x94','z','x','c','v','b','n','m',',','.','/',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const unsigned char trq_shift[128] = {
+    0,27,'!','@','#','$','%','^','&','*','(',')','_','+','\b',
+    '\t','Q','W','E','R','T','Y','U','I','O','P','G','\x9a','\n',
+    0,'A','S','D','F','G','H','J','K','L','S','I','~',
+    0,'\x99','Z','X','C','V','B','N','M','<','>','?',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
+static const unsigned char de_norm[128] = {
+    0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
+    '\t','q','w','e','r','t','z','u','i','o','p','\x81','+','\n',
+    0,'a','s','d','f','g','h','j','k','l','\x94','\x84','^',
+    0,'#','y','x','c','v','b','n','m',',','.','-',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const unsigned char de_shift[128] = {
+    0,27,'!','"','\xa7','$','%','&','/','(',')','=','?','`','\b',
+    '\t','Q','W','E','R','T','Z','U','I','O','P','\x9a','*','\n',
+    0,'A','S','D','F','G','H','J','K','L','\x99','\x8e','\xf8',
+    0,'\'','Y','X','C','V','B','N','M',';',':','_',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
+static const unsigned char fr_norm[128] = {
+    0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
+    '\t','a','z','e','r','t','y','u','i','o','p','^','$','\n',
+    0,'q','s','d','f','g','h','j','k','l','m','\x97','\x82',
+    0,'*','w','x','c','v','b','n',',',';',':','!',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const unsigned char fr_shift[128] = {
+    0,27,'&','\x82','"','\'','(','-','\x8a','_','\x87','\x85',')','=','\b',
+    '\t','A','Z','E','R','T','Y','U','I','O','P','\xa8','\xa3','\n',
+    0,'Q','S','D','F','G','H','J','K','L','M','\x99','`',
+    0,'\xb0','W','X','C','V','B','N','?','.','/','\xa1',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
+static const unsigned char trf_norm[128] = {
+    0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
+    '\t','f','g','g','i','i','j','\x94','p','s','u','\x81','v','\n',
+    0,'a','b','c','\x87','d','e','h','k','l','m','n','s',
+    0,'t','z','s','\x87','c','w','\'','x',',','.','/',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+static const unsigned char trf_shift[128] = {
+    0,27,'!','@','#','$','%','^','&','*','(',')','_','+','\b',
+    '\t','F','G','G','I','I','J','\x99','P','S','U','\x9a','V','\n',
+    0,'A','B','C','\x80','D','E','H','K','L','M','N','S',
+    0,'T','Z','S','\x80','C','W','\'','X','<','>','?',
+    0,'*',0,' ',0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
+static const unsigned char *sa = en_norm;
+static const unsigned char *ss = en_shift;
+static int cur_layout = 0;
+
+typedef struct {
+    const char *name;
+    const unsigned char *norm;
+    const unsigned char *shift;
+} kb_layout_t;
+
+static const kb_layout_t layouts[] = {
+    {"en", en_norm, en_shift},
+    {"trq", trq_norm, trq_shift},
+    {"de", de_norm, de_shift},
+    {"fr", fr_norm, fr_shift},
+    {"trf", trf_norm, trf_shift},
+};
+
+int keyboard_set_layout(const char *name) {
+    for (int i = 0; i < (int)(sizeof(layouts)/sizeof(layouts[0])); i++) {
+        if (strcmp(layouts[i].name, name) == 0) {
+            sa = layouts[i].norm;
+            ss = layouts[i].shift;
+            cur_layout = i;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+const char *keyboard_get_layout_name(void) {
+    return layouts[cur_layout].name;
+}
+
+int keyboard_get_layout_count(void) {
+    return sizeof(layouts)/sizeof(layouts[0]);
+}
+
+const char *keyboard_get_layout_name_by_index(int i) {
+    if (i < 0 || i >= keyboard_get_layout_count()) return NULL;
+    return layouts[i].name;
+}
+
 static char eb[8];
 static int el = 0;
 static int er = 0;
@@ -94,8 +208,8 @@ static void sc(uint8_t s) {
     if (s == 0x53) { push(KEY_DELETE); return; }
     int sh = ls || rs;
     char c;
-    if (sh && s < sizeof(ss)) c = ss[s];
-    else if (s < sizeof(sa)) c = sa[s];
+    if (sh && s < 128) c = ss[s];
+    else if (s < 128) c = sa[s];
     else c = 0;
     if (caps && c >= 'a' && c <= 'z') c -= 32;
     else if (caps && c >= 'A' && c <= 'Z') c += 32;

@@ -50,4 +50,5 @@ void cmd_banner(const char *arg);
 void cmd_cal(const char *arg);
 void cmd_factor(const char *arg);
 void cmd_ascii(void);
+void cmd_loadkeys(const char *arg);
 #endif

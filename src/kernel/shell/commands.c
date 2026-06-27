@@ -55,6 +55,7 @@ void cmd_help(void) {
         "  ascii            show printable ascii table\n"
         "  clear/ver/reboot clear screen / version / reboot\n"
         "  poweroff         save and shut down\n"
+        "  loadkeys <lay>   switch keyboard layout\n"
         "  help             you are here\n"
         "  !! or !5         re-run from history\n"
         "\nnote: ");
@@ -64,15 +65,29 @@ void cmd_help(void) {
     vga_putchar('\n');
 }
 void cmd_clear(void) { vga_clear(); }
+static enum vga_color ls_color(const char *name) {
+    const char *e = strrchr(name, '.');
+    if (!e) return COLOR_LIGHT_GREY;
+    e++;
+    if (strcmp(e,"txt")==0||strcmp(e,"md")==0||strcmp(e,"doc")==0) return COLOR_LIGHT_GREY;
+    if (strcmp(e,"sh")==0||strcmp(e,"py")==0||strcmp(e,"js")==0||strcmp(e,"c")==0||strcmp(e,"h")==0||strcmp(e,"asm")==0||strcmp(e,"s")==0) return COLOR_LIGHT_GREEN;
+    if (strcmp(e,"zip")==0||strcmp(e,"tar")==0||strcmp(e,"gz")==0||strcmp(e,"bz2")==0||strcmp(e,"xz")==0||strcmp(e,"7z")==0||strcmp(e,"rar")==0) return COLOR_LIGHT_RED;
+    if (strcmp(e,"jpg")==0||strcmp(e,"jpeg")==0||strcmp(e,"png")==0||strcmp(e,"gif")==0||strcmp(e,"bmp")==0||strcmp(e,"ico")==0) return COLOR_LIGHT_MAGENTA;
+    if (strcmp(e,"bin")==0||strcmp(e,"elf")==0||strcmp(e,"exe")==0||strcmp(e,"com")==0) return COLOR_GREEN;
+    if (strcmp(e,"cfg")==0||strcmp(e,"conf")==0||strcmp(e,"json")==0||strcmp(e,"xml")==0||strcmp(e,"yml")==0||strcmp(e,"yaml")==0||strcmp(e,"toml")==0) return COLOR_LIGHT_CYAN;
+    if (strcmp(e,"mp3")==0||strcmp(e,"wav")==0||strcmp(e,"ogg")==0||strcmp(e,"flac")==0) return COLOR_LIGHT_BLUE;
+    if (strcmp(e,"iso")==0||strcmp(e,"img")==0) return COLOR_BROWN;
+    if (strcmp(e,"log")==0) return COLOR_LIGHT_BROWN;
+    return COLOR_LIGHT_GREY;
+}
 void cmd_pwd(fs_node_t *cwd) { char p[MAX_PATH]; fs_to_absolute(p,cwd,""); vga_writeln(p); }
 void cmd_ls(fs_node_t *cwd, const char *arg) {
     fs_node_t *d = cwd; char tk[MAX_NAME]; const char *p = arg;
     if (token(&p,tk,MAX_NAME)) { d=fs_resolve(tk,cwd); if(!d||d->type!=FT_DIR){vga_writeln("ls: bad path");return;} }
     for (int i=0;i<d->child_count;i++) {
         fs_node_t *c = d->children[i];
-        vga_write("  ");
-        if (c->type==FT_DIR) { vga_set_fg(COLOR_LIGHT_CYAN); vga_write(c->name); vga_set_fg(COLOR_LIGHT_GREY); vga_write("/"); }
-        else vga_write(c->name);
+        if (c->type==FT_DIR) { vga_set_fg(COLOR_BLUE); vga_write(c->name); vga_set_fg(COLOR_LIGHT_GREY); vga_write("/ "); }
+        else { vga_set_fg(ls_color(c->name)); vga_write(c->name); vga_set_fg(COLOR_LIGHT_GREY); vga_write(" "); }
     }
     if (d->child_count > 0) vga_putchar('\n');
 }
@@ -261,8 +276,8 @@ void cmd_tau(fs_node_t *cwd, const char *arg) {
 static void pt(fs_node_t *d, int depth) {
     for(int i=0;i<d->child_count;i++){
         for(int j=0;j<depth;j++)vga_write("  ");vga_write("  ");
-        if(d->children[i]->type==FT_DIR){vga_set_fg(COLOR_LIGHT_CYAN);vga_write(d->children[i]->name);vga_write("/");vga_set_fg(COLOR_LIGHT_GREY);vga_putchar('\n');pt(d->children[i],depth+1);}
-        else{vga_write(d->children[i]->name);vga_putchar('\n');}
+        if(d->children[i]->type==FT_DIR){vga_set_fg(COLOR_BLUE);vga_write(d->children[i]->name);vga_write("/");vga_set_fg(COLOR_LIGHT_GREY);vga_putchar('\n');pt(d->children[i],depth+1);}
+        else{vga_set_fg(ls_color(d->children[i]->name));vga_write(d->children[i]->name);vga_set_fg(COLOR_LIGHT_GREY);vga_putchar('\n');}
     }
 }
 void cmd_tree(fs_node_t *cwd, const char *arg) {
@@ -588,4 +603,16 @@ void cmd_ascii(void){
         }
         vga_putchar('\n');
     }
+}
+void cmd_loadkeys(const char *arg) {
+    const char *p=arg;char name[32];skip(&p);
+    if(!token(&p,name,32)){
+        vga_write("loadkeys <layout> - available:");
+        int n=keyboard_get_layout_count();
+        for(int i=0;i<n;i++){vga_write(" ");vga_write(keyboard_get_layout_name_by_index(i));}
+        vga_putchar('\n');
+        return;
+    }
+    if(keyboard_set_layout(name)){vga_write("layout: ");vga_writeln(keyboard_get_layout_name());}
+    else vga_writeln("loadkeys: no such layout");
 }

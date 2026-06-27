@@ -23,4 +23,8 @@
 #define KEY_SDOWN -107
 void keyboard_init(void);
 int keyboard_getchar(char *c);
+int keyboard_set_layout(const char *name);
+const char *keyboard_get_layout_name(void);
+int keyboard_get_layout_count(void);
+const char *keyboard_get_layout_name_by_index(int i);
 #endif

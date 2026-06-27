@@ -9,5 +9,5 @@ typedef short          int16_t;
 #define NULL 0
 #define TRUE 1
 #define FALSE 0
-#define ONX_VERSION "v0.2.3.14747"
+#define ONX_VERSION "v0.2.5.14767"
 #endif

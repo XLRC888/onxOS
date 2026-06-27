@@ -36,7 +36,7 @@ static void tc_match(const char *w,int fw){
     const char *pf=w;fs_node_t *d=cd;
     if(sl>=0){char dp[MAX_PATH];if(sl==0)strcpy(dp,"/");else{strncpy(dp,w,sl);dp[sl]=0;}d=fs_resolve(dp,cd);if(!d||d->type!=FT_DIR)goto err;pf=w+sl+1;}
     int pl=strlen(pf);tc.cnt=0;
-    if(fw&&sl<0){static const char *cs[]={"help","clear","pwd","ls","cd","mkdir","touch","rm","rmdir","cat","echo","cp","mv","stat","hex","ver","reboot","tau","tree","find","grep","head","cowsay","poweroff","tail","wc","history","uname","df","du","sort","yes","sleep","seq","rev","which","tac","base64","uniq","setup","whoami","hostname","date","shuf","banner","cal","factor","ascii",0};for(int i=0;cs[i]&&tc.cnt<MA;i++){if(!pf[0]||strncmp(cs[i],pf,pl)==0){char b[LB];strcpy(b,cs[i]);strcpy(tc.m[tc.cnt++],b);}}}
+    if(fw&&sl<0){static const char *cs[]={"help","clear","pwd","ls","cd","mkdir","touch","rm","rmdir","cat","echo","cp","mv","stat","hex","ver","reboot","tau","tree","find","grep","head","cowsay","poweroff","tail","wc","history","uname","df","du","sort","yes","sleep","seq","rev","which","tac","base64","uniq","setup","whoami","hostname","date","shuf","banner","cal","factor","ascii","loadkeys",0};for(int i=0;cs[i]&&tc.cnt<MA;i++){if(!pf[0]||strncmp(cs[i],pf,pl)==0){char b[LB];strcpy(b,cs[i]);strcpy(tc.m[tc.cnt++],b);}}}
     if(!fw||sl>=0){for(int i=0;i<d->child_count&&tc.cnt<MA;i++){if(!pf[0]||strncmp(d->children[i]->name,pf,pl)==0){char b[LB];if(sl>=0){strncpy(b,w,sl+1);b[sl+1]=0;int rem=LB-sl-2;char*nm=d->children[i]->name;int nml=strlen(nm);if(nml<rem){strcpy(b+sl+1,nm);if(d->children[i]->type==FT_DIR)strcat(b,"/");strcpy(tc.m[tc.cnt++],b);}}else{strcpy(b,d->children[i]->name);if(d->children[i]->type==FT_DIR)strcat(b,"/");strcpy(tc.m[tc.cnt++],b);}}}}
     return;
     err:tc.cnt=0;
@@ -152,6 +152,7 @@ static void exec(const char *cmd) {
     else if(strcmp(a[0],"cal")==0){const char *ca=ac>1?cmd+strlen(a[0]):"";while(*ca==' ')ca++;cmd_cal(ca);}
     else if(strcmp(a[0],"factor")==0){const char *fa=ac>1?cmd+strlen(a[0]):"";while(*fa==' ')fa++;cmd_factor(fa);}
     else if(strcmp(a[0],"ascii")==0)cmd_ascii();
+    else if(strcmp(a[0],"loadkeys")==0){const char *la=ac>1?cmd+strlen(a[0]):"";while(*la==' ')la++;cmd_loadkeys(la);}
     else if(a[0][0]=='!'){}else{vga_write("onx: unknown: ");vga_writeln(a[0]);}
 }
 void shell_init(void) { cd=fs_get_root(); hc=0; hi=-1; vga_scrollback_init(); }
