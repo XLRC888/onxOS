@@ -12,10 +12,10 @@ CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -mgeneral-regs-only -MMD -MP
 LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
 
--include $(BUILD_DIR)/*.d
-
 SRC_DIR = src/kernel
 BUILD_DIR = build
+
+-include $(BUILD_DIR)/*.d
 
 C_SRCS = $(shell find $(SRC_DIR) -name '*.c')
 ASM_SRCS = $(SRC_DIR)/cpu/gdt_flush.asm $(SRC_DIR)/cpu/idt_load.asm $(SRC_DIR)/cpu/isr_entry.asm
