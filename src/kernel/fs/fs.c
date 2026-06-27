@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "port.h"
 #include "serial.h"
+#include "bootblob.h"
 #define FS_MAGIC 0x58464E4F
 #define NODE_DISK_SECTORS 9
 typedef struct {
@@ -27,6 +28,7 @@ static uint32_t data_lba = 0;
 static int boot_media = 0;
 static int ata_ok = 0;
 static uint16_t data_port = 0;
+extern uint32_t start_of_bss;
 
 static uint32_t pci_read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off) {
     uint32_t addr = (uint32_t)0x80000000 | ((uint32_t)bus << 16) | ((uint32_t)dev << 11) | ((uint32_t)func << 8) | (off & 0xFC);
@@ -356,6 +358,11 @@ int fs_save_disk(void) {
             }
             if (data_lba == 0) { serial_write("fs_save: no dlba\n"); ok = 0; goto out; }
         }
+        uint32_t ksz = (uint32_t)&start_of_bss - 0x200000;
+        uint32_t ksect = (ksz + 511) / 512;
+        if (ksect > 122) ksect = 122;
+        if (!ata_wr(6, (uint8_t)ksect, (void*)0x200000)) { serial_write("fs_save: kern write fail\n"); ok = 0; goto out; }
+        if (!ata_wr(0, 6, (void*)bootblob)) { serial_write("fs_save: boot write fail\n"); ok = 0; goto out; }
         if (!ata_wr(0, 1, &sb)) { serial_write("fs_save: sb write fail\n"); ok = 0; goto out; }
         for (int i = 0; i < count; i++) {
             spack(nodes, count, buf, i);
