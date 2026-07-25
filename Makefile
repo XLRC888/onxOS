@@ -8,9 +8,10 @@ CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -I src/kernel/drivers -I src/kernel/fs -I src/kernel/mm \
           -I src/kernel/shell -I src/kernel/cpu -I src/kernel/lil -I build \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
-         -fno-asynchronous-unwind-tables -fmerge-all-constants \
-         -mgeneral-regs-only -MMD -MP
+          -fno-asynchronous-unwind-tables -fmerge-all-constants \
+          -MMD -MP
 LDFLAGS = -m elf_i386 -T src/ld/linker.ld --gc-sections -z noexecstack
+LIBGCC = $(shell $(CC) -m32 -print-libgcc-file-name)
 
 SRC_DIR = src/kernel
 BUILD_DIR = build
@@ -50,7 +51,7 @@ $(BUILD_DIR)/setup.o: src/kernel/core/setup.c $(BUILD_DIR)/bootblob.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/onxos.elf: $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBGCC)
 	python3 tools/patch_boot.py $(BUILD_DIR)/bootloader.bin --verify $@
 
 $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
@@ -58,7 +59,7 @@ $(BUILD_DIR)/onxos.bin: $(BUILD_DIR)/onxos.elf
 	python3 tools/patch_boot.py $(BUILD_DIR)/bootloader.bin --patch $(BUILD_DIR)/onxos_tmp.bin --header $(BUILD_DIR)/bootblob.h
 	rm -f $(BUILD_DIR)/setup.o
 	$(CC) $(CFLAGS) -c src/kernel/core/setup.c -o $(BUILD_DIR)/setup.o
-	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/onxos.elf $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS)
+	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/onxos.elf $(BOOT_OBJ) $(ASM_OBJS) $(C_OBJS) $(LIBGCC)
 	objcopy -O binary $(BUILD_DIR)/onxos.elf $@
 	rm -f $(BUILD_DIR)/onxos_tmp.bin
 	@echo "Built: $@"

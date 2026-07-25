@@ -89,23 +89,15 @@ void state_restore(void *vp) { LlState *s = (LlState *)vp;
     in_try = s->in_try;
     error_occurred = s->error_occurred;
 }
-int last_error_line;
+void ll_vsnprintf(char *buf, unsigned long sz, const char *fmt, va_list ap);
 
 void fatal(const char *fmt, ...) {
     error_occurred = 1;
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(last_error, sizeof(last_error), fmt, ap);
+    ll_vsnprintf(last_error, sizeof(last_error), fmt, ap);
     va_end(ap);
-    if (strncmp(last_error, "line ", 5) == 0) {
-        int line = 0;
-        for (int i = 5; last_error[i] >= '0' && last_error[i] <= '9'; i++)
-            line = line * 10 + (last_error[i] - '0');
-        if (line > 0) {}
-    }
-    if (!in_try)
-        /* ok */
-    
+    if (!in_try) {}
     ll_longjmp(&error_jmp, 1);
 }
 
@@ -398,6 +390,7 @@ char *val_tostr(Value v) {
     return sdup(buf);
 }
 
+extern double strtod(const char *str, char **endptr);
 double val_tonum(Value v) {
     if (v.type == VAL_NUM) return v.data.num;
     if (v.type == VAL_LIST) return v.data.list.count;
@@ -1073,7 +1066,6 @@ int exec_stmt(ASTNode *n) {
                 Value v = eval_expr(n->data.modify.value);
                 int idx = var_find(n->data.modify.name);
                 if (idx >= 0 && vars[idx].forced) fatal("line %d: cannot intify a forced variable", n->line);
-                last_error_line = n->line;
                 double d = val_tonum(v);
                 var_set(n->data.modify.name, make_num(d));
                 val_free(v);
@@ -1106,7 +1098,6 @@ int exec_stmt(ASTNode *n) {
                 free(out);
             } else {
                 Value v = var_get(n->data.modify.name);
-                last_error_line = n->line;
                 double d = val_tonum(v);
                 var_set(n->data.modify.name, make_num(d));
             }
@@ -1145,7 +1136,6 @@ int exec_stmt(ASTNode *n) {
         case NODE_TRY: {
             ll_jmp_buf old;
             old = error_jmp;
-            int saved_line = last_error_line;
             in_try = 1;
             if (ll_setjmp(&error_jmp) == 0) {
                 exec_stmt(n->data.try_stmt.body);
@@ -1157,11 +1147,10 @@ int exec_stmt(ASTNode *n) {
                 in_try = 0;
                 if (n->data.try_stmt.catch_var) {
                     Value err = make_dict();
-                    dict_set(&err, "line", make_num(last_error_line));
+                    dict_set(&err, "line", make_num((double)n->line));
                     dict_set(&err, "msg", make_str(last_error));
                     var_set(n->data.try_stmt.catch_var, err);
                 }
-                last_error_line = saved_line;
                 exec_stmt(n->data.try_stmt.catch_body);
             }
             return 0;
@@ -1949,7 +1938,7 @@ OP_PRINT: {
         vals[i] = vm_stack[--sp];
     for (int i = 0; i < n; i++) {
         if (i > 0) if (ll_cb.print) ll_cb.print(" ", ll_cb.print_user);
-        if (vals[i].type == VAL_STR) { printf("%s", vals[i].data.str); free(vals[i].data.str); }
+        if (vals[i].type == VAL_STR) { if (ll_cb.print) ll_cb.print(vals[i].data.str, ll_cb.print_user); free(vals[i].data.str); }
         else if (vals[i].type == VAL_LIST || vals[i].type == VAL_DICT) { char *s = val_tostr(vals[i]); if (ll_cb.print) ll_cb.print(s, ll_cb.print_user); free(s); val_free(vals[i]); }
         else { char *s = val_tostr(vals[i]); if (ll_cb.print) ll_cb.print(s, ll_cb.print_user); free(s); val_free(vals[i]); }
     }
@@ -1978,7 +1967,7 @@ OP_FALLBACK: {
 }
 
 
-void ll_vsnprintf(char *buf, size_t sz, const char *fmt, va_list ap) {
+void ll_vsnprintf(char *buf, unsigned long sz, const char *fmt, va_list ap) {
     int r = 0;
     for (size_t i = 0; fmt[i] && r < (int)sz - 1; i++) {
         if (fmt[i] == '%') {

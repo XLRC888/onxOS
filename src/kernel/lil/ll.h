@@ -208,6 +208,8 @@ int val_cmp(Value a, Value b, int op);
 void lex_init(const char *src);
 Token lex_next(void);
 Token lex_peek_next(void);
+void lex_getpos(int *pos, int *line, int *has_peek, Token *cur);
+void lex_setpos(int pos, int line, int has_peek, Token cur);
 
 ASTNode *parse_program(void);
 ASTNode *parse_stmt(void);
@@ -226,6 +228,14 @@ void push_scope(void);
 void pop_scope(void);
 int get_scope_depth(void);
 void var_set_no_scope(const char *name, Value v);
+
+int memcmp(const void *s1, const void *s2, unsigned long n);
+int tolower(int c);
+int isalnum(int c);
+int isdigit(int c);
+int isalpha(int c);
+int snprintf(char *buf, unsigned long sz, const char *fmt, ...);
+double strtod(const char *str, char **endptr);
 
 int check_has(ASTNode *lhs_expr, ASTNode *item, ASTNode **items, int nitems, int nocase);
 int check_cond_flags(ASTNode *cond, int flags);
