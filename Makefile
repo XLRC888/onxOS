@@ -6,7 +6,7 @@ CFLAGS = -m32 -ffreestanding -nostdlib -no-pie -fno-pic -fno-stack-protector \
          -fno-exceptions -Os -fno-builtin -Wall -Wextra -Wno-unused-variable \
          -Wno-dangling-pointer -Wno-misleading-indentation -I src/kernel/core \
          -I src/kernel/drivers -I src/kernel/fs -I src/kernel/mm \
-         -I src/kernel/shell -I src/kernel/cpu -I build \
+          -I src/kernel/shell -I src/kernel/cpu -I src/kernel/lil -I build \
          -ffunction-sections -fdata-sections -fomit-frame-pointer \
          -fno-asynchronous-unwind-tables -fmerge-all-constants \
          -mgeneral-regs-only -MMD -MP
@@ -18,7 +18,7 @@ BUILD_DIR = build
 -include $(BUILD_DIR)/*.d
 
 C_SRCS = $(shell find $(SRC_DIR) -name '*.c')
-ASM_SRCS = $(SRC_DIR)/cpu/gdt_flush.asm $(SRC_DIR)/cpu/idt_load.asm $(SRC_DIR)/cpu/isr_entry.asm
+ASM_SRCS = $(SRC_DIR)/cpu/gdt_flush.asm $(SRC_DIR)/cpu/idt_load.asm $(SRC_DIR)/cpu/isr_entry.asm $(SRC_DIR)/lil/ll_jmp.asm
 C_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(patsubst %.c,%.o,$(C_SRCS))))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(patsubst %.asm,%.o,$(ASM_SRCS))))
 BOOT_OBJ = $(BUILD_DIR)/boot.o

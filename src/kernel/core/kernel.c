@@ -56,6 +56,7 @@ void kernel_early(unsigned int magic, unsigned int mbi_addr) {
     serial_write("idt ok\n");
     keyboard_init();
     pit_init();
+    __asm__ volatile("fninit");
     __asm__ volatile("sti");
     serial_write("kbd ok\n");
     uint32_t heap_start = (uint32_t)&end_of_kernel + 0x1000;
