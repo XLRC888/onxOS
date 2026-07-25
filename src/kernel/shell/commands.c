@@ -172,6 +172,12 @@ void cmd_cat(fs_node_t *cwd, const char *arg) {
     vga_writeln(nd->content);
 }
 void cmd_echo(const char *arg) { const char *p=arg; skip(&p); vga_writeln(p); }
+static void cp_r(fs_node_t *s, fs_node_t *d) {
+    for(int i=0;i<s->child_count;i++){fs_node_t*c=s->children[i];
+        if(c->type==FT_FILE){fs_node_t*nf=fs_create_file(d,c->name);if(nf)strcpy(nf->content,c->content);}
+        else{fs_node_t*sd=fs_create_dir(d,c->name);if(sd)cp_r(c,sd);}
+    }
+}
 void cmd_cp(fs_node_t *cwd, const char *arg) {
     char src[MAX_NAME],rdst[MAX_NAME]; const char *p=arg;
     if(!token(&p,src,MAX_NAME)||!token(&p,rdst,MAX_NAME)){vga_writeln("cp: src dst");return;}
@@ -179,11 +185,7 @@ void cmd_cp(fs_node_t *cwd, const char *arg) {
     char dst[MAX_PATH];te(dst,rdst,MAX_PATH);
     fs_node_t *dp;char dn[MAX_NAME];
     if(!ps(dst,cwd,&dp,dn)||!dn[0]){vga_writeln("cp: bad dst");return;}
-    if(sn->type==FT_DIR){fs_node_t*nd=fs_create_dir(dp,dn);if(!nd){vga_writeln("cp: fail");return;}
-        for(int i=0;i<sn->child_count;i++){fs_node_t*child=sn->children[i];
-            if(child->type==FT_FILE){fs_node_t*nf=fs_create_file(nd,child->name);if(nf)strcpy(nf->content,child->content);}
-            else{fs_node_t*subd=fs_create_dir(nd,child->name);if(subd)for(int j=0;j<child->child_count;j++){fs_node_t*gc=child->children[j];if(gc->type==FT_FILE){fs_node_t*nf=fs_create_file(subd,gc->name);if(nf)strcpy(nf->content,gc->content);}}}
-        }}
+    if(sn->type==FT_DIR){fs_node_t*nd=fs_create_dir(dp,dn);if(!nd){vga_writeln("cp: fail");return;}cp_r(sn,nd);}
     else{fs_node_t*nf=fs_create_file(dp,dn);if(!nf){vga_writeln("cp: fail");return;}strcpy(nf->content,sn->content);}
 }
 void cmd_mv(fs_node_t *cwd, const char *arg) {
@@ -341,10 +343,10 @@ void cmd_tail(fs_node_t *cwd, const char *arg) {
     if(*p=='-'){p++;if(*p=='n'){p++;skip(&p);n=0;while(*p>='0'&&*p<='9')n=n*10+(*p++-'0');}skip(&p);}
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tail: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tail: not a file");return;}
-    const char *c=nd->content;int lines[260],lc=1,wrap=0;
-    lines[0]=0;for(int i=0;c[i];i++){if(c[i]=='\n'){int idx=lc%260;lines[idx]=i+1;lc++;if(lc>=260)wrap=1;}}
-    int avail=wrap?260:lc;if(n>avail)n=avail;
-    int start=avail>=1?lines[(lc-n)%260]:0;
+    const char *c=nd->content;int nl=0,len=0;
+    for(int i=0;c[i];i++){if(c[i]=='\n')nl++;len++;}
+    if(n>nl)n=nl;int start=0,cnt=0;
+    for(int i=len-1;i>=0;i--){if(c[i]=='\n'){cnt++;if(cnt==n){start=i+1;break;}}}
     for(int i=start;c[i];i++)vga_putchar(c[i]);
 }
 void cmd_wc(fs_node_t *cwd, const char *arg) {

@@ -37,7 +37,7 @@ uint32_t acpi_find_rsdp_uefi(void) {
         uint32_t addr = *(uint32_t *)ent;
         if (*(uint32_t *)addr == 0x20445352 && *(uint32_t *)(addr + 4) == 0x20505452)
             return addr;
-        ent += 0x18;
+        ent += 0x14;
     }
     return 0;
 }

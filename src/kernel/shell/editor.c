@@ -218,9 +218,9 @@ static void er(void) {
         serial_write("  \r\n");
     }
 }
-static char es_empty[1];
+static char es_em[EC+1];
 static char *es(const char *s) {
-    char *c=(char*)malloc(EC+1);if(!c){char*e=(char*)malloc(1);if(e)e[0]=0;return e?e:es_empty;}
+    char *c=(char*)malloc(EC+1);if(!c){strncpy(es_em,s,EC);es_em[EC]=0;return es_em;}
     strncpy(c,s,EC);c[EC]=0;return c;
 }
 void editor_open(fs_node_t *cwd, const char *filename) {

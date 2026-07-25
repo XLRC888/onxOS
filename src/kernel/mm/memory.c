@@ -1,5 +1,6 @@
 #include "memory.h"
 typedef struct block {
+    uint32_t magic;
     uint32_t size;
     struct block *next;
     int free;
@@ -18,10 +19,12 @@ void memory_init(void *heap_start, uint32_t heap_size) {
     free_list->size = heap_size - BLOCK_SIZE;
     free_list->next = 0;
     free_list->free = 1;
+    free_list->magic = HEAP_MAGIC;
 }
 static void split_block(block_t *block, uint32_t size) {
     if (size > 0xFFFFFFEF || block->size <= size + BLOCK_SIZE + ALIGN) return;
     block_t *new_block = (block_t *)((uint8_t *)block + BLOCK_SIZE + size);
+    new_block->magic = HEAP_MAGIC;
     new_block->size = block->size - size - BLOCK_SIZE;
     new_block->next = block->next;
     new_block->free = 1;
@@ -44,9 +47,11 @@ void *malloc(uint32_t size) {
 }
 void free(void *ptr) {
     if (!ptr) return;
-    if ((uint8_t*)ptr < (uint8_t*)heap_base || (uint8_t*)ptr >= (uint8_t*)heap_base + heap_total) return;
+    if ((uint8_t*)ptr <= (uint8_t*)heap_base || (uint8_t*)ptr >= (uint8_t*)heap_base + heap_total) return;
     block_t *block = (block_t *)((uint8_t *)ptr - BLOCK_SIZE);
+    if (block->magic != HEAP_MAGIC || block->free) return;
     block->free = 1;
+    block->magic = 0;
     block_t *curr = free_list;
     while (curr && curr->next) {
         if (curr->free && curr->next->free) {
