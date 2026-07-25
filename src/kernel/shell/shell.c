@@ -6,6 +6,7 @@
 #include "string.h"
 #include "fs.h"
 #include "commands.h"
+#include "pit.h"
 #define LB 256
 #define MA 16
 #define HS 32
@@ -16,6 +17,7 @@ char hist[HS][LB];
 int hc = 0;
 static int hi = -1;
 static int pr, pc;
+
 static const char *gp(void) {
     static char p[512]; char abs[256];
     fs_to_absolute(abs, cd, "");
@@ -223,7 +225,7 @@ void shell_run(void) {
             }
             else if(c>=32&&c<127&&lp<LB-1){if(tc.active)tc_hide();tc.active=0;int l=strlen(lb);if(lp<l){int ol=strlen(lb);for(int i=l;i>lp;i--)lb[i]=lb[i-1];lb[l+1]=0;lb[lp]=c;lp++;int sp=lp;rl(lb,ol);lp=sp;ct(lp);}else{lb[lp]=c;lb[lp+1]=0;lp++;vga_putchar_raw(c);serial_putchar(c);}}
         }
-        if(strlen(lb)>0){ha(lb);exec(lb);}
+        if(strlen(lb)>0){if(keyboard_intr()){vga_writeln("^C");}else{ha(lb);exec(lb);}}
         hi=hc;
     }
 }

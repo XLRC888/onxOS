@@ -8,6 +8,7 @@
 #include "shell.h"
 #include "string.h"
 #include "port.h"
+#include "pit.h"
 #define HEAP_SIZE 0x100000
 extern uint32_t end_of_kernel;
 
@@ -54,6 +55,7 @@ void kernel_early(unsigned int magic, unsigned int mbi_addr) {
     idt_init();
     serial_write("idt ok\n");
     keyboard_init();
+    pit_init();
     __asm__ volatile("sti");
     serial_write("kbd ok\n");
     uint32_t heap_start = (uint32_t)&end_of_kernel + 0x1000;

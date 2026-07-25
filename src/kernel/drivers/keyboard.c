@@ -9,6 +9,7 @@ static int ls = 0, rs = 0, caps = 0, ctrl = 0, caps_held = 0;
 static int bf = 0;
 static int ext = 0;
 static int ps2ok = 0;
+static volatile int kbd_intr = 0;
 
 static const unsigned char en_norm[128] = {
     0,27,'1','2','3','4','5','6','7','8','9','0','-','=','\b',
@@ -142,8 +143,13 @@ static char eb[8];
 static int el = 0;
 static int er = 0;
 static int push(char c) {
+    if (c == 3) kbd_intr = 1;
     int n = (bh + 1) % KEY_BUF_SIZE;
     if (n != bt) { kb[bh] = c; bh = n; return 1; }
+    return 0;
+}
+int keyboard_intr(void) {
+    if (kbd_intr) { kbd_intr = 0; return 1; }
     return 0;
 }
 static int mcs(const char *s, int ln) {

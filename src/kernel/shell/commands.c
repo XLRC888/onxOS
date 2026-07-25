@@ -7,6 +7,7 @@
 #include "fs.h"
 #include "keyboard.h"
 #include "serial.h"
+#include "pit.h"
 extern char hist[32][256];
 extern int hc;
 static void skip(const char **s) { while (**s == ' ') (*s)++; }
@@ -414,13 +415,14 @@ void cmd_sort(fs_node_t *cwd, const char *arg) {
 void cmd_yes(const char *arg) {
     const char *p=arg;skip(&p);
     const char *s=*p?p:"y";
-    for(int i=0;i<100;i++)vga_writeln(s);
+    for(int i=0;i<100;i++){if(keyboard_intr()){vga_writeln("^C");return;}vga_writeln(s);}
 }
 void cmd_sleep(const char *arg) {
     const char *p=arg;skip(&p);
     int ms=0;while(*p>='0'&&*p<='9')ms=ms*10+(*p++-'0');
     if(ms<=0)ms=1000;
-    for(volatile uint32_t i=0;i<(uint32_t)ms*80000;i++)__asm__ volatile("nop");
+    uint32_t end=pit_get_ticks()+ms/10;
+    while(pit_get_ticks()<end){if(keyboard_intr()){vga_writeln("^C");return;}__asm__ volatile("pause");}
 }
 void cmd_seq(const char *arg) {
     const char *p=arg;int start=1,end=0,step=1;
