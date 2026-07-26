@@ -1,0 +1,136 @@
+: snake.lil - arrow keys to move, eat food, grow
+scr@clear
+scr@color 10 0
+
+dir = 0
+sx = []
+sy = []
+list@push sx 10
+list@push sy 10
+list@push sx 9
+list@push sy 10
+list@push sx 8
+list@push sy 10
+
+fx = 30
+fy = 10
+score = 0
+speed = 15
+last = 0
+
+: draw border
+y = 0
+while y < 22 {
+  scr@gotoxy 0 y
+  scr@color 8 0
+  print("#")
+  scr@gotoxy 39 y
+  print("#")
+  y = y + 1
+}
+x = 1
+while x < 39 {
+  scr@gotoxy x 0
+  print("#")
+  scr@gotoxy x 21
+  print("#")
+  x = x + 1
+}
+scr@color 10 0
+scr@gotoxy 1 22
+print("score: 0")
+
+: main loop
+while 1 {
+  k = scr@key
+  if k == -125 {
+    if dir != 0 { dir = 2 }
+  }
+  if k == -126 {
+    if dir != 2 { dir = 0 }
+  }
+  if k == -128 {
+    if dir != 1 { dir = 3 }
+  }
+  if k == -127 {
+    if dir != 3 { dir = 1 }
+  }
+  if k == 113 { break }
+
+  t = scr@ticks
+  if t - last < speed { }
+  else {
+    last = t
+    hx = sx[list@len sx - 1]
+    hy = sy[list@len sy - 1]
+    if dir == 0 { hx = hx + 1 }
+    if dir == 1 { hy = hy + 1 }
+    if dir == 2 { hx = hx - 1 }
+    if dir == 3 { hy = hy - 1 }
+
+    if hx < 1 { break }
+    if hx > 38 { break }
+    if hy < 1 { break }
+    if hy > 20 { break }
+
+    i = 0
+    c = 0
+    while i < list@len sx {
+      if sx[i] == hx {
+        if sy[i] == hy { c = 1 }
+      }
+      i = i + 1
+    }
+    if c { break }
+
+    : clear tail if not eating
+    if hx == fx {
+      if hy == fy {
+        score = score + 1
+        scr@gotoxy 1 22
+        scr@color 14 0
+        print("score: ")
+        print(score)
+        scr@color 10 0
+        fx = math@rand * 37 + 1
+        fy = math@rand * 20 + 1
+        if speed > 3 { speed = speed - 1 }
+      }
+      else {
+        scr@gotoxy sx[0] sy[0]
+        print(" ")
+        list@pop sx
+        list@pop sy
+      }
+    }
+    else {
+      scr@gotoxy sx[0] sy[0]
+      print(" ")
+      list@pop sx
+      list@pop sy
+    }
+
+    list@push sx hx
+    list@push sy hy
+    scr@gotoxy hx hy
+    print("@")
+
+    scr@gotoxy fx fy
+    scr@color 12 0
+    print("O")
+    scr@color 10 0
+  }
+}
+
+: game over
+scr@clear
+scr@gotoxy 12 10
+scr@color 12 0
+print("game over!")
+scr@gotoxy 10 11
+print("final score: ")
+print(score)
+scr@gotoxy 8 12
+print("press any key...")
+k = 0
+while k == 0 { k = scr@key }

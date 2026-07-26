@@ -70,12 +70,12 @@ ISO = $(BUILD_DIR)/onxos.iso
 DISK = $(BUILD_DIR)/disk.img
 
 $(DISK):
-	python3 -c 'import struct; f=open("$(DISK)","wb"); f.write(struct.pack("<III",0x58464E4F,1,0)+b"\x00"*500); f.write(struct.pack("<64sIIiI"+"I"*32+"132s",b"",0,0,0,0,*([0]*32),b"\x00"*132)); f.write(b"\x00"*(5120-512-340)); f.close()'
-	@echo "Created: $(DISK)"
+	python3 tools/pack_outsiders.py
+	cp build/outsiders.img $(DISK)
 
 iso: $(ISO)
 
-$(ISO): $(BUILD_DIR)/onxos.elf | $(BUILD_DIR)
+$(ISO): $(BUILD_DIR)/onxos.elf $(DISK) | $(BUILD_DIR)
 	rm -rf $(ISODIR) $(ISO)
 	mkdir -p $(ISODIR)/boot/grub
 	cp $< $(ISODIR)/boot/onxos.bin

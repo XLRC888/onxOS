@@ -1,0 +1,62 @@
+== onxOS GAMES ==
+
+SNAKE (snake.lil)
+  Arrow keys to move. Eat food (O) to grow.
+  Don't hit the walls or yourself.
+  Run: lil /snake.lil
+
+SNAKE - TYPE-IN (24 lines!)
+  : snake.lil
+  scr@clear
+  dir=0 s=[] t=[] list@push s 10 9 8 list@push t 10 10 10
+  fx=30 fy=10 sc=0 sp=15 lm=0
+  y=0 while y<22{scr@gotoxy 0 y print("#")scr@gotoxy 39 y print("#")y=y+1}
+  x=1 while x<39{scr@gotoxy x 0 print("#")scr@gotoxy x 21 print("#")x=x+1}
+  while 1{
+    k=scr@key
+    if k==-125&dir!=0{dir=2}if k==-126&dir!=2{dir=0}
+    if k==-128&dir!=1{dir=3}if k==-127&dir!=3{dir=1}
+    if k==113{break}
+    t=scr@ticks
+    if t-lm<sp{}
+    else{lm=t
+    hx=s[list@len s-1]hy=t[list@len t-1]
+    if dir==0{hx=hx+1}if dir==1{hy=hy+1}
+    if dir==2{hx=hx-1}if dir==3{hy=hy-1}
+    if hx<1|hx>38|hy<1|hy>20{break}
+    i=0 c=0 while i<list@len s{if s[i]==hx&t[i]==hy{c=1}i=i+1}
+    if c{break}
+    if hx==fx&hy==fy{sc=sc+1 fx=math@rand*37+1 fy=math@rand*20+1
+      if sp>3{sp=sp-1}}
+    else{scr@gotoxy s[0] t[0] print(" ")list@pop s list@pop t}
+    list@push s hx list@push t hy
+    scr@gotoxy hx hy print("@")
+    scr@gotoxy fx fy print("O")}
+  }
+
+MAKE YOUR OWN
+  Games are written in 'lil' scripting language.
+  Use scr@ library for screen control:
+    scr@clear         - clear screen
+    scr@gotoxy x y    - move cursor
+    scr@color fg bg   - set colors (0-15)
+    scr@key           - read key (0 = none)
+    scr@ticks         - PIT tick count
+    scr@beep freq ms  - pc speaker beep
+  Use list@ library for lists:
+    list@push name val
+    list@pop name
+    list@len name
+  
+  Example - simple timer:
+    scr@clear
+    n = 10
+    while n > 0 {
+      scr@gotoxy 5 5
+      print(n)
+      scr@ticks t
+      while scr@ticks - t < 100 { }
+      n = n - 1
+    }
+    scr@gotoxy 5 5
+    print("done!")

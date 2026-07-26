@@ -5,6 +5,7 @@
 #include "string.h"
 #include "keyboard.h"
 #include "pit.h"
+#include "port.h"
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
@@ -13,6 +14,13 @@
 int lib_imported[4];
 int func_count;
 FuncDef funcs[MAX_FUNCS];
+
+static unsigned long ll_rng = 12345;
+
+char *resolve_arg(char *arg) {
+    if (arg[0] == '\1') { Value v = var_get(arg + 1); return val_tostr(v); }
+    return sdup(arg);
+}
 
 double __floatsidf(int a) { return (double)a; }
 int __fixdfsi(double a) { return (int)a; }
@@ -46,24 +54,67 @@ Value lib_dispatch(const char *lib, const char *fn, int argc, char **args, int l
         if (!strcmp(fn, "clear")) { vga_clear(); return make_num(0); }
         if (!strcmp(fn, "gotoxy")) {
             if (argc < 2) fatal("scr@gotoxy: need x y");
-            int x = (int)strtod(args[0], NULL);
-            int y = (int)strtod(args[1], NULL);
-            vga_set_cursor(y, x); return make_num(0);
+            char *xs = resolve_arg(args[0]); char *ys = resolve_arg(args[1]);
+            int x = (int)strtod(xs, NULL); int y = (int)strtod(ys, NULL);
+            free(xs); free(ys); vga_set_cursor(y, x); return make_num(0);
         }
         if (!strcmp(fn, "color")) {
             if (argc < 2) fatal("scr@color: need fg bg");
-            int fg = (int)strtod(args[0], NULL);
-            int bg = (int)strtod(args[1], NULL);
-            vga_set_fg(fg); vga_set_bg(bg); return make_num(0);
+            char *fs = resolve_arg(args[0]); char *bs = resolve_arg(args[1]);
+            int fg = (int)strtod(fs, NULL); int bg = (int)strtod(bs, NULL);
+            free(fs); free(bs); vga_set_fg(fg); vga_set_bg(bg); return make_num(0);
         }
         if (!strcmp(fn, "key")) {
-            char c; return make_num(keyboard_getchar(&c) ? (double)(unsigned char)c : 0);
+            char c; return make_num(keyboard_getchar(&c) ? (double)c : 0);
         }
         if (!strcmp(fn, "ticks")) { return make_num((double)pit_get_ticks()); }
+        if (!strcmp(fn, "beep")) {
+            if (argc < 2) fatal("scr@beep: need freq ms");
+            char *fs = resolve_arg(args[0]); char *ms = resolve_arg(args[1]);
+            int f = (int)strtod(fs, NULL), m = (int)strtod(ms, NULL);
+            free(fs); free(ms);
+            if (f < 20) f = 440; uint32_t d = 1193182 / f;
+            outb(0x43, 0xB6); outb(0x42, d & 0xFF); outb(0x42, (d >> 8) & 0xFF);
+            uint8_t t = inb(0x61); outb(0x61, t | 3);
+            uint32_t e = pit_get_ticks() + m / 10; while (pit_get_ticks() < e);
+            outb(0x61, t & ~3); return make_num(0);
+        }
         fatal("scr: unknown function");
     }
-    if (!strcmp(lib, "math")) return make_num(0);
+    if (!strcmp(lib, "math")) {
+        if (!strcmp(fn, "rand")) { ll_rng = ll_rng * 1103515245 + 12345; return make_num((double)(ll_rng >> 16) / 32768.0); }
+        if (!strcmp(fn, "seed")) { if (argc < 1) return make_num(0); char *ss = resolve_arg(args[0]); ll_rng = (unsigned long)strtod(ss, NULL); free(ss); return make_num(0); }
+        return make_num(0);
+    }
     if (!strcmp(lib, "string")) return make_num(0);
+    if (!strcmp(lib, "list")) {
+        if (!strcmp(fn, "push")) {
+            if (argc < 2) fatal("list@push: need name val");
+            char *vn = args[0]; if (vn[0]=='\1') vn++;
+            int vi = var_find(vn);
+            if (vi < 0) { var_set(vn, make_list()); vi = var_find(vn); }
+            char *vs = resolve_arg(args[1]); char *end; double d = strtod(vs, &end);
+            Value item; if (*end) item = make_str(vs); else item = make_num(d);
+            free(vs); list_append(&vars[vi].val, item); return make_num(0);
+        }
+        if (!strcmp(fn, "pop")) {
+            if (argc < 1) fatal("list@pop: need name");
+            char *vn = args[0]; if (vn[0]=='\1') vn++;
+            int vi = var_find(vn);
+            if (vi < 0 || vars[vi].val.type != VAL_LIST || vars[vi].val.data.list.count == 0) return make_num(0);
+            Value item = vars[vi].val.data.list.items[--vars[vi].val.data.list.count];
+            val_free(vars[vi].val.data.list.items[vars[vi].val.data.list.count]);
+            return make_num(0);
+        }
+        if (!strcmp(fn, "len")) {
+            if (argc < 1) return make_num(0);
+            char *vn = args[0]; if (vn[0]=='\1') vn++;
+            int vi = var_find(vn);
+            if (vi < 0 || vars[vi].val.type != VAL_LIST) return make_num(0);
+            return make_num((double)vars[vi].val.data.list.count);
+        }
+        return make_num(0);
+    }
     fatal("little-lil: library not available");
     return undef_val;
 }
