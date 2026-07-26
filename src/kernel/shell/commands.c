@@ -16,6 +16,99 @@ static int token(const char **s, char *out, int mx) {
     while (**s && **s != ' ' && i < mx - 1) out[i++] = **s, (*s)++;
     out[i]=0; return i>0;
 }
+void cmd_man(const char *arg) {
+    const char *p = arg; skip(&p); char t[32]; if (!token(&p, t, 32)) { cmd_help(); return; }
+    if (!strcmp(t, "help")) { vga_writeln("  help - show command list"); vga_writeln("  usage: help"); return; }
+    if (!strcmp(t, "man")) { vga_writeln("  man - show detailed command documentation"); vga_writeln("  usage: man <topic>"); return; }
+    if (!strcmp(t, "ls")) { vga_writeln("  ls - list directory contents\n  usage: ls [-l] [path]\n  -l  show file type and size"); return; }
+    if (!strcmp(t, "cd")) { vga_writeln("  cd - change directory\n  usage: cd [path]\n  ~  go to root\n  .. go to parent\n  .  stay here"); return; }
+    if (!strcmp(t, "cat")) { vga_writeln("  cat - print file contents to screen\n  usage: cat <file>"); return; }
+    if (!strcmp(t, "echo")) { vga_writeln("  echo - print arguments\n  usage: echo [text]"); return; }
+    if (!strcmp(t, "cp")) { vga_writeln("  cp - copy files or directories\n  usage: cp <src> <dst>\n  copies directories recursively"); return; }
+    if (!strcmp(t, "mv")) { vga_writeln("  mv - move/rename files\n  usage: mv <src> <dst>"); return; }
+    if (!strcmp(t, "rm")) { vga_writeln("  rm - remove files\n  usage: rm [-r] <file>...\n  -r  recursive (for directories)"); return; }
+    if (!strcmp(t, "touch")) { vga_writeln("  touch - create empty file\n  usage: touch <file>"); return; }
+    if (!strcmp(t, "mkdir")) { vga_writeln("  mkdir - create directory\n  usage: mkdir <dir>"); return; }
+    if (!strcmp(t, "grep")) { vga_writeln("  grep - search file contents\n  usage: grep <pattern> <file>"); return; }
+    if (!strcmp(t, "head")) { vga_writeln("  head - print first 10 lines of file\n  usage: head [-n N] <file>"); return; }
+    if (!strcmp(t, "tail")) { vga_writeln("  tail - print last 10 lines of file\n  usage: tail [-n N] <file>"); return; }
+    if (!strcmp(t, "wc")) { vga_writeln("  wc - count lines, words, bytes\n  usage: wc <file>"); return; }
+    if (!strcmp(t, "sort")) { vga_writeln("  sort - sort file lines alphabetically\n  usage: sort <file>"); return; }
+    if (!strcmp(t, "uniq")) { vga_writeln("  uniq - remove consecutive duplicate lines\n  usage: uniq <file>"); return; }
+    if (!strcmp(t, "rev")) { vga_writeln("  rev - reverse each line character by character\n  usage: rev <file>"); return; }
+    if (!strcmp(t, "tac")) { vga_writeln("  tac - print file lines in reverse order\n  usage: tac <file>"); return; }
+    if (!strcmp(t, "base64")) { vga_writeln("  base64 - base64 encode file contents\n  usage: base64 <file>"); return; }
+    if (!strcmp(t, "hex")) { vga_writeln("  hex - hex dump of file\n  usage: hex <file>\n  shows offset, hex bytes, ascii sidebar"); return; }
+    if (!strcmp(t, "stat")) { vga_writeln("  stat - display file metadata\n  usage: stat <file>\n  shows name, type, size, parent, children"); return; }
+    if (!strcmp(t, "find")) { vga_writeln("  find - recursively find files by name\n  usage: find <pattern>"); return; }
+    if (!strcmp(t, "tree")) { vga_writeln("  tree - display directory tree\n  usage: tree [dir]"); return; }
+    if (!strcmp(t, "tau")) { vga_writeln("  tau - text editor\n  usage: tau <file>\n  ctrl+s  save  ctrl+q  quit (prompts save)\n  ctrl+c  copy  ctrl+v  paste\n  ctrl+b  toggle line numbers"); return; }
+    if (!strcmp(t, "cowsay")) { vga_writeln("  cowsay - ascii art cow\n  usage: cowsay [message]"); return; }
+    if (!strcmp(t, "banner")) { vga_writeln("  banner - large ascii art text\n  usage: banner <message>"); return; }
+    if (!strcmp(t, "cal")) { vga_writeln("  cal - display a calendar\n  usage: cal [month] [year]"); return; }
+    if (!strcmp(t, "date")) { vga_writeln("  date - show date and time from RTC\n  usage: date"); return; }
+    if (!strcmp(t, "seq")) { vga_writeln("  seq - print number sequence\n  usage: seq [start] <end> [step]"); return; }
+    if (!strcmp(t, "yes")) { vga_writeln("  yes - repeat a string (ctrl+c to stop)\n  usage: yes [text]"); return; }
+    if (!strcmp(t, "sleep")) { vga_writeln("  sleep - delay for milliseconds\n  usage: sleep <ms>"); return; }
+    if (!strcmp(t, "shuf")) { vga_writeln("  shuf - shuffle lines of a file\n  usage: shuf <file>"); return; }
+    if (!strcmp(t, "factor")) { vga_writeln("  factor - factor a number into primes\n  usage: factor <number>"); return; }
+    if (!strcmp(t, "ascii")) { vga_writeln("  ascii - show printable ascii table\n  usage: ascii"); return; }
+    if (!strcmp(t, "pwd")) { vga_writeln("  pwd - print working directory\n  usage: pwd"); return; }
+    if (!strcmp(t, "df")) { vga_writeln("  df - show filesystem disk usage\n  usage: df"); return; }
+    if (!strcmp(t, "du")) { vga_writeln("  du - show directory size\n  usage: du [dir]"); return; }
+    if (!strcmp(t, "history")) { vga_writeln("  history - show command history\n  usage: history\n  !!  repeat last command\n  !N  repeat command N"); return; }
+    if (!strcmp(t, "which")) { vga_writeln("  which - locate a file\n  usage: which <file>"); return; }
+    if (!strcmp(t, "uname")) { vga_writeln("  uname - show system information\n  usage: uname"); return; }
+    if (!strcmp(t, "ver")) { vga_writeln("  ver - show onxOS version\n  usage: ver"); return; }
+    if (!strcmp(t, "clear")) { vga_writeln("  clear - clear the screen\n  usage: clear"); return; }
+    if (!strcmp(t, "reboot")) { vga_writeln("  reboot - restart the system\n  usage: reboot"); return; }
+    if (!strcmp(t, "poweroff")) { vga_writeln("  poweroff - save filesystem and shut down\n  usage: poweroff\n  saves all files before powering off"); return; }
+    if (!strcmp(t, "whoami")) { vga_writeln("  whoami - print current user (always root)\n  usage: whoami"); return; }
+    if (!strcmp(t, "hostname")) { vga_writeln("  hostname - print system hostname (onxos)\n  usage: hostname"); return; }
+    if (!strcmp(t, "loadkeys")) { vga_writeln("  loadkeys - switch keyboard layout\n  usage: loadkeys [layout]\n  available: en, trq, de, fr, trf"); return; }
+    if (!strcmp(t, "setup")) { vga_writeln("  setup - install onxOS to disk\n  usage: setup\n  writes bootloader, kernel, and filesystem"); return; }
+    if (!strcmp(t, "lil")) {
+        vga_write("  lil - little-lil scripting language\n  usage: lil <code>\n         lil /path/to/file.lil\n"); vga_write(
+        "  a lightweight language embedded in the kernel.\n  features: variables, if/while/for, functions, lists,\n"
+        "  dicts, math, string operations.\n  library calls via func@lib syntax:\n"
+        "    scr@clear     scr@gotoxy x y   scr@color fg bg\n"
+        "    scr@key       scr@ticks        scr@beep freq ms\n"
+        "    list@push n v list@pop n      list@len n\n"
+        "    math@rand     math@seed n\n"
+        "  see GAMES.TXT for examples\n"); return;
+    }
+    if (!strcmp(t, "larj")) {
+        vga_write("  larj - (planned) game scripting language\n  usage: not yet implemented\n"); vga_write(
+        "  a 2D side-scroller game language inspired by the\n"
+        "  vision of onxOS as a programmable platform.\n"
+        "  features (planned):\n"
+        "    [2D:Side]     scene { background, size }\n"
+        "    new(Char) { properties { skin, movement,\n"
+        "      walkSpeed, jumpHeight, damage, name, pos } }\n"
+        "    initialize(AS, LS, LC) expands to key bindings\n"
+        "      + state machine + physics loop\n"
+        "    game { loop {} }   spawn(\"name\") {}\n"
+        "  raw expansion: on_key(key,fn), on_update(dt),\n"
+        "  iframes/state machine, vx/vy/gravity physics\n"); return;
+    }
+    if (!strcmp(t, "scr")) {
+        vga_write("  scr - screen control library for lil\n  usage: func@scr args\n"); vga_write(
+        "    scr@clear        - clear the screen\n"
+        "    scr@gotoxy x y   - set cursor position (0-79, 0-24)\n"
+        "    scr@color fg bg  - set colors (0-15):\n"
+        "       0 black   1 blue    2 green   3 cyan\n"
+        "       4 red     5 magenta 6 brown   7 light grey\n"
+        "       8 dark gr 9 lt blue 10 lt grn 11 lt cyn\n"
+        "      12 lt red  13 lt mag 14 yellow 15 white\n"
+        "    scr@key          - read key (0=none, negative=arrow)\n"
+        "       -125 left   -126 right   -128 up   -127 down\n"
+        "    scr@ticks        - PIT tick count (100 Hz)\n"
+        "    scr@beep f ms    - pc speaker beep\n"); return;
+    }
+    if (!strcmp(t, "list")) { vga_writeln("  list - list library for lil\n  usage: func@list args\n    list@push name val  - append to list\n    list@pop name       - remove last element\n    list@len name       - get list length"); return; }
+    if (!strcmp(t, "snake")) { vga_writeln("  snake - play the snake game\n  run: lil /snake.lil\n  or type in the 24-line version from GAMES.TXT"); return; }
+    vga_write("no manual entry for '"); vga_write(t); vga_writeln("'");
+}
 void cmd_help(void) {
     vga_writeln("onxOS shell help\n"
         "  ls/cd/pwd        navigate directories\n"
@@ -57,7 +150,8 @@ void cmd_help(void) {
         "  clear/ver/reboot clear screen / version / reboot\n"
         "  poweroff         save and shut down\n"
         "  loadkeys <lay>   switch keyboard layout\n"
-        "  help             you are here\n"
+        "  man <topic>      detailed command help\n"
+        "  lil [code/file]  lil scripting language\n"
         "  !! or !5         re-run from history\n"
         "\nnote: ");
     vga_set_fg(COLOR_LIGHT_CYAN);

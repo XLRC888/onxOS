@@ -52,4 +52,5 @@ void cmd_factor(const char *arg);
 void cmd_ascii(void);
 void cmd_loadkeys(const char *arg);
 void cmd_lil(fs_node_t *cwd, const char *arg);
+void cmd_man(const char *arg);
 #endif

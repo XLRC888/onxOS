@@ -155,6 +155,7 @@ static void exec(const char *cmd) {
     else if(strcmp(a[0],"factor")==0){const char *fa=ac>1?cmd+strlen(a[0]):"";while(*fa==' ')fa++;cmd_factor(fa);}
     else if(strcmp(a[0],"ascii")==0)cmd_ascii();
     else if(strcmp(a[0],"loadkeys")==0){const char *la=ac>1?cmd+strlen(a[0]):"";while(*la==' ')la++;cmd_loadkeys(la);}
+    else if(strcmp(a[0],"man")==0){const char *ma=ac>1?cmd+strlen(a[0]):"";while(*ma==' ')ma++;cmd_man(ma);}
     else if(strcmp(a[0],"lil")==0){const char *la=ac>1?cmd+strlen(a[0]):"";while(*la==' ')la++;cmd_lil(cd,la);}
     else if(a[0][0]=='!'){}else{vga_write("onx: unknown: ");vga_writeln(a[0]);}
 }
