@@ -4,14 +4,16 @@
 #define MAX_FILES 128
 #define MAX_NAME 64
 #define MAX_PATH 256
-#define MAX_CONTENT 4096
+#define MAX_CONTENT 32768
 #define MAX_CHILDREN 32
 #define ATA_SECTOR_SIZE 512
+#define NODE_CONTENT_SECTORS 64
+#define NODE_DISK_SECTORS (1 + NODE_CONTENT_SECTORS)
 typedef enum { FT_DIR, FT_FILE } file_type_t;
 typedef struct fs_node {
     char name[MAX_NAME];
     file_type_t type;
-    char content[MAX_CONTENT];
+    char *content;
     int content_size;
     struct fs_node *parent;
     struct fs_node *children[MAX_CHILDREN];

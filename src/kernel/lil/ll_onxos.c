@@ -3,6 +3,8 @@
 #include "serial.h"
 #include "fs.h"
 #include "string.h"
+#include "keyboard.h"
+#include "pit.h"
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
@@ -32,13 +34,36 @@ int lib_idx(const char *name) {
     if (!strcmp(name, "math")) return 0;
     if (!strcmp(name, "string")) return 1;
     if (!strcmp(name, "sys")) return 2;
+    if (!strcmp(name, "scr")) return 3;
     return -1;
 }
 Value lib_dispatch(const char *lib, const char *fn, int argc, char **args, int line) {
-    (void)args; (void)line;
+    (void)line;
     if (!strcmp(lib, "sys")) {
         if (!strcmp(fn, "exit")) { error_occurred = 1; ll_longjmp(&error_jmp, 1); }
     }
+    if (!strcmp(lib, "scr")) {
+        if (!strcmp(fn, "clear")) { vga_clear(); return make_num(0); }
+        if (!strcmp(fn, "gotoxy")) {
+            if (argc < 2) fatal("scr@gotoxy: need x y");
+            int x = (int)strtod(args[0], NULL);
+            int y = (int)strtod(args[1], NULL);
+            vga_set_cursor(y, x); return make_num(0);
+        }
+        if (!strcmp(fn, "color")) {
+            if (argc < 2) fatal("scr@color: need fg bg");
+            int fg = (int)strtod(args[0], NULL);
+            int bg = (int)strtod(args[1], NULL);
+            vga_set_fg(fg); vga_set_bg(bg); return make_num(0);
+        }
+        if (!strcmp(fn, "key")) {
+            char c; return make_num(keyboard_getchar(&c) ? (double)(unsigned char)c : 0);
+        }
+        if (!strcmp(fn, "ticks")) { return make_num((double)pit_get_ticks()); }
+        fatal("scr: unknown function");
+    }
+    if (!strcmp(lib, "math")) return make_num(0);
+    if (!strcmp(lib, "string")) return make_num(0);
     fatal("little-lil: library not available");
     return undef_val;
 }

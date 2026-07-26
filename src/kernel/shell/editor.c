@@ -98,13 +98,18 @@ static void paste(void) {
     ed.dirty=1;
 }
 static void save(void) {
-    int ri=0;ed.nd->content[0]=0;
-    for(int i=0;i<ed.lc&&ri<MAX_CONTENT-6;i++){
-        int ll=strlen(ed.l[i]);if(ll>MAX_CONTENT-6-ri)ll=MAX_CONTENT-6-ri;
-        memcpy(ed.nd->content+ri,ed.l[i],ll);ri+=ll;
-        if(ri<MAX_CONTENT-1){ed.nd->content[ri]='\n';ri++;}
+    int ri=0,need=0;
+    for(int i=0;i<ed.lc;i++){need+=strlen(ed.l[i])+1;}
+    if(need>MAX_CONTENT-1)need=MAX_CONTENT-1;
+    if(ed.nd->content)free(ed.nd->content);
+    ed.nd->content=(char*)malloc(need+1);if(!ed.nd->content)return;
+    ed.nd->content[0]=0;
+    for(int i=0;i<ed.lc;i++){
+        int ll=strlen(ed.l[i]);if(ri+ll>=MAX_CONTENT-1)ll=MAX_CONTENT-1-ri-1;
+        if(ll>0){memcpy(ed.nd->content+ri,ed.l[i],ll);ri+=ll;}
+        if(ri<MAX_CONTENT-2){ed.nd->content[ri]='\n';ri++;}
     }ed.nd->content[ri]=0;
-    memset(ed.nd->content+ri,0,MAX_CONTENT-ri);
+    ed.nd->content_size=ri;
     ed.dirty=0;
 }
 static int qprompt(void) {

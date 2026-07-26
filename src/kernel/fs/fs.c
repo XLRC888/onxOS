@@ -5,7 +5,7 @@
 #include "serial.h"
 #include "bootblob.h"
 #define FS_MAGIC 0x58464E4F
-#define NODE_DISK_SECTORS 9
+/* NODE_DISK_SECTORS moved to fs.h */
 typedef struct {
     uint32_t magic;
     uint32_t node_count;
@@ -157,7 +157,7 @@ void fs_init(void) {
     root_node.parent = &root_node;
     root_node.child_count = 0;
     root_node.content_size = 0;
-    root_node.content[0] = 0;
+    root_node.content = NULL;
     ata_init();
     serial_write("ata ");serial_write(ata_base?"ok":"no");serial_write(" ");serial_write(ata_base2?"ok":"no");serial_write("\n");
     data_lba = find_data_part();
@@ -222,7 +222,7 @@ static fs_node_t *fn(const char *name, file_type_t t, fs_node_t *parent) {
     if(!n)return 0;
     memset(n, 0, sizeof(fs_node_t));
     strncpy(n->name,name,MAX_NAME-1);n->name[MAX_NAME-1]=0;
-    n->type=t;n->parent=parent;n->child_count=0;n->content_size=0;
+    n->type=t;n->parent=parent;n->child_count=0;n->content_size=0;n->content=NULL;
     parent->children[parent->child_count++]=n;
     return n;
 }
@@ -233,6 +233,7 @@ int fs_delete(fs_node_t *parent, const char *name) {
     for(int i=0;i<parent->child_count;i++){
         if(strcmp(parent->children[i]->name,name)!=0)continue;
         if(parent->children[i]->type==FT_DIR&&parent->children[i]->child_count>0)return -1;
+        if(parent->children[i]->content)free(parent->children[i]->content);
         free(parent->children[i]);
         for(int j=i;j<parent->child_count-1;j++)parent->children[j]=parent->children[j+1];
         parent->child_count--;return 1;
@@ -398,7 +399,8 @@ static int dld(sector_read_t rd) {
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
             uint32_t raw = metas[i].content_size;
             int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
-            memcpy(loaded[i]->content, buf + ATA_SECTOR_SIZE, sz); loaded[i]->content[sz] = 0;
+            loaded[i]->content = (char*)malloc(sz + 1);
+            if (loaded[i]->content) { memcpy(loaded[i]->content, buf + ATA_SECTOR_SIZE, sz); loaded[i]->content[sz] = 0; }
             loaded[i]->content_size = sz;
         }
     }
@@ -440,7 +442,8 @@ int fs_load_from_memory(void *data) {
         if (metas[i].type == FT_FILE && metas[i].content_size > 0) {
             uint32_t raw = metas[i].content_size;
             int sz = raw > (uint32_t)(MAX_CONTENT - 1) ? (MAX_CONTENT - 1) : (int)raw;
-            memcpy(loaded[i]->content, (uint8_t *)data + off + 512, sz); loaded[i]->content[sz] = 0;
+            loaded[i]->content = (char*)malloc(sz + 1);
+            if (loaded[i]->content) { memcpy(loaded[i]->content, (uint8_t *)data + off + 512, sz); loaded[i]->content[sz] = 0; }
             loaded[i]->content_size = sz;
         }
     }

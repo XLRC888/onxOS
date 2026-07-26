@@ -170,12 +170,12 @@ void cmd_cat(fs_node_t *cwd, const char *arg) {
     if(!token(&p,tk,MAX_NAME)){vga_writeln("cat: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd){vga_writeln("cat: not found");return;}
     if(nd->type!=FT_FILE){vga_writeln("cat: is a dir");return;}
-    vga_writeln(nd->content);
+    vga_writeln(nd->content ? nd->content : "");
 }
 void cmd_echo(const char *arg) { const char *p=arg; skip(&p); vga_writeln(p); }
 static void cp_r(fs_node_t *s, fs_node_t *d) {
     for(int i=0;i<s->child_count;i++){fs_node_t*c=s->children[i];
-        if(c->type==FT_FILE){fs_node_t*nf=fs_create_file(d,c->name);if(nf)strcpy(nf->content,c->content);}
+        if(c->type==FT_FILE){fs_node_t*nf=fs_create_file(d,c->name);if(nf){if(nf->content)free(nf->content);nf->content=c->content?sdup(c->content):NULL;nf->content_size=c->content_size;}}
         else{fs_node_t*sd=fs_create_dir(d,c->name);if(sd)cp_r(c,sd);}
     }
 }
@@ -187,7 +187,7 @@ void cmd_cp(fs_node_t *cwd, const char *arg) {
     fs_node_t *dp;char dn[MAX_NAME];
     if(!ps(dst,cwd,&dp,dn)||!dn[0]){vga_writeln("cp: bad dst");return;}
     if(sn->type==FT_DIR){fs_node_t*nd=fs_create_dir(dp,dn);if(!nd){vga_writeln("cp: fail");return;}cp_r(sn,nd);}
-    else{fs_node_t*nf=fs_create_file(dp,dn);if(!nf){vga_writeln("cp: fail");return;}strcpy(nf->content,sn->content);}
+    else{fs_node_t*nf=fs_create_file(dp,dn);if(!nf){vga_writeln("cp: fail");return;}if(nf->content)free(nf->content);nf->content=sn->content?sdup(sn->content):NULL;nf->content_size=sn->content_size;}
 }
 void cmd_mv(fs_node_t *cwd, const char *arg) {
     char src[MAX_NAME],rdst[MAX_NAME]; const char *p=arg;
@@ -210,14 +210,14 @@ void cmd_stat(fs_node_t *cwd, const char *arg) {
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd){vga_writeln("stat: not found");return;}
     vga_write("  Name: ");vga_writeln(nd->name);
     vga_write("  Type: ");vga_writeln(nd->type==FT_DIR?"dir":"file");
-    vga_write("  Size: ");vga_write_dec(strlen(nd->content));vga_putchar('\n');
+    vga_write("  Size: ");vga_write_dec(strlen(nd->content ? nd->content : ""));vga_putchar('\n');
     vga_write("  Children: ");vga_write_dec(nd->child_count);vga_putchar('\n');
 }
 void cmd_hexdump(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("hex: missing");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("hex: not a file");return;}
-    const char *c=nd->content;int l=0;while(l<MAX_CONTENT&&c[l])l++;
+    const char *c = nd->content ? nd->content : "";int l=0;while(c[l])l++;
     int lines=0;
     for(int i=0;i<l;i+=16){
         if(lines>=20){vga_write("-- more (space/enter=next, q=quit) --");char kc;int to=0;while(keyboard_getchar(&kc)){}while(!keyboard_getchar(&kc)){to++;if(to>500000){kc='q';break;}}if(kc=='q'||kc=='Q'||kc==KEY_ESC){vga_putchar('\n');return;}vga_putchar('\n');lines=0;}
@@ -335,7 +335,7 @@ void cmd_head(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("head: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("head: not a file");return;}
-    const char *c=nd->content;int line=0;
+    const char *c = nd->content ? nd->content : "";int line=0;
     for(int i=0;c[i]&&line<10;i++){vga_putchar(c[i]);if(c[i]=='\n')line++;}
 }
 void cmd_tail(fs_node_t *cwd, const char *arg) {
@@ -344,7 +344,7 @@ void cmd_tail(fs_node_t *cwd, const char *arg) {
     if(*p=='-'){p++;if(*p=='n'){p++;skip(&p);n=0;while(*p>='0'&&*p<='9')n=n*10+(*p++-'0');}skip(&p);}
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tail: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tail: not a file");return;}
-    const char *c=nd->content;int nl=0,len=0;
+    const char *c = nd->content ? nd->content : "";int nl=0,len=0;
     for(int i=0;c[i];i++){if(c[i]=='\n')nl++;len++;}
     if(n>nl)n=nl;int start=0,cnt=0;
     for(int i=len-1;i>=0;i--){if(c[i]=='\n'){cnt++;if(cnt==n){start=i+1;break;}}}
@@ -354,7 +354,7 @@ void cmd_wc(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("wc: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("wc: not a file");return;}
-    const char *c=nd->content;int lines=0,words=0,chars=0,inw=0;
+    const char *c = nd->content ? nd->content : "";int lines=0,words=0,chars=0,inw=0;
     for(int i=0;c[i];i++){chars++;if(c[i]=='\n')lines++;if(c[i]==' '||c[i]=='\n'||c[i]=='\t'){if(inw){words++;inw=0;}}else inw=1;}
     if(inw)words++;
     vga_write("  ");vga_write_dec(lines);vga_write(" ");vga_write_dec(words);vga_write(" ");vga_write_dec(chars);vga_putchar('\n');
@@ -398,7 +398,7 @@ void cmd_sort(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("sort: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("sort: not a file");return;}
-    const char *c=nd->content;char (*lines)[256]=(char(*)[256])malloc(256*256);if(!lines){vga_writeln("sort: oom");return;}int lc=0,ci=0;
+    const char *c = nd->content ? nd->content : "";char (*lines)[256]=(char(*)[256])malloc(256*256);if(!lines){vga_writeln("sort: oom");return;}int lc=0,ci=0;
     for(int i=0;c[i]&&lc<256;i++){
         if(c[i]=='\n'){lines[lc][ci]=0;lc++;ci=0;}
         else if(ci<255)lines[lc][ci++]=c[i];
@@ -442,7 +442,7 @@ void cmd_rev(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("rev: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("rev: not a file");return;}
-    const char *c=nd->content;char line[256];int ci=0;
+    const char *c = nd->content ? nd->content : "";char line[256];int ci=0;
     for(int i=0;c[i];i++){
         if(c[i]=='\n'){line[ci]=0;for(int j=ci-1;j>=0;j--)vga_putchar(line[j]);vga_putchar('\n');ci=0;}
         else if(ci<255)line[ci++]=c[i];
@@ -460,7 +460,7 @@ void cmd_tac(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("tac: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("tac: not a file");return;}
-    const char *c=nd->content;int lc=0,ci=0;
+    const char *c = nd->content ? nd->content : "";int lc=0,ci=0;
     int ms=128,ml=128;char *buf=(char*)malloc(ms*ml);if(!buf){vga_writeln("tac: oom");return;}
     for(int i=0;c[i]&&lc<ms;i++){
         if(c[i]=='\n'){buf[lc*ml+ci]=0;lc++;ci=0;}
@@ -473,7 +473,7 @@ void cmd_base64(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("base64: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("base64: not a file");return;}
-    const char *c=nd->content;int l=strlen(c);
+    const char *c = nd->content ? nd->content : "";int l=strlen(c);
     static const char t[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     for(int i=0;i<l;i+=3){
         uint32_t n=((uint32_t)(uint8_t)c[i])<<16;
@@ -489,7 +489,7 @@ void cmd_uniq(fs_node_t *cwd, const char *arg) {
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("uniq: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("uniq: not a file");return;}
-    const char *c=nd->content;    char prev[256]="";char cur[256];int ci=0,first=1;
+    const char *c = nd->content ? nd->content : "";    char prev[256]="";char cur[256];int ci=0,first=1;
     for(int i=0;c[i];i++){
         if(c[i]=='\n'){cur[ci]=0;
             if(first||strcmp(cur,prev)!=0){vga_writeln(cur);strcpy(prev,cur);first=0;}
@@ -520,7 +520,7 @@ void cmd_shuf(fs_node_t *cwd,const char *arg){
     char tk[MAX_NAME];const char *p=arg;
     if(!token(&p,tk,MAX_NAME)){vga_writeln("shuf: missing operand");return;}
     fs_node_t *nd=fs_resolve(tk,cwd);if(!nd||nd->type!=FT_FILE){vga_writeln("shuf: not a file");return;}
-    const char *c=nd->content;char(*lines)[256]=(char(*)[256])malloc(256*256);
+    const char *c = nd->content ? nd->content : "";char(*lines)[256]=(char(*)[256])malloc(256*256);
     if(!lines){vga_writeln("shuf: oom");return;}int lc=0,ci=0;
     for(int i=0;c[i]&&lc<256;i++){if(c[i]=='\n'){lines[lc][ci]=0;lc++;ci=0;}else if(ci<255)lines[lc][ci++]=c[i];}
     if(ci>0&&lc<256){lines[lc][ci]=0;lc++;}

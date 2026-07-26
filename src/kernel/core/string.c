@@ -1,4 +1,5 @@
 #include "string.h"
+#include "memory.h"
 void memcpy(void *dest, const void *src, uint32_t n) {
     uint8_t *d = dest; const uint8_t *s = src;
     for (uint32_t i = 0; i < n; i++) d[i] = s[i];
@@ -93,3 +94,4 @@ int atoi(const char *str, int *ok) {
     if (ok) *ok = cnt > 0;
     return cnt > 0 ? sign * res : 0;
 }
+

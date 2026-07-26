@@ -14,4 +14,5 @@ char *strrchr(const char *s, int c);
 char *strstr(const char *haystack, const char *needle);
 char *itoa(int value, char *str, int base);
 int atoi(const char *str, int *ok);
+char *sdup(const char *s);
 #endif
