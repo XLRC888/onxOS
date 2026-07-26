@@ -6,7 +6,7 @@
  \___/  |_| \_| /_/ \_\ \___/  |____/
 </pre></h2>
 
-32-bit x86 hobby OS from scratch
+32-bit x86 hobby OS from scratch (MIT licensed)
 
 Persistent filesystem, text editor, shell with ~30 commands. No graphics stack,
 no audio, no networking.
@@ -147,7 +147,7 @@ Type to insert, escape to exit.
 
 ### LICENSE
 
-Do whatever you want with it.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ### DISCLAIMER
 It's not stable. Some commits might be just broken, so back up the data you need, and use at your own risk. (im talking about installing it on real hardware)
