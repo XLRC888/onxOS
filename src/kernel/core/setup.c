@@ -17,20 +17,18 @@ void cmd_setup(fs_node_t *cwd) {
     vga_write("setup: installing onxOS to disk...\n");
 
     vga_write("  bootloader... ");
-    if (!fs_write_sectors(0, 6, bootblob)) {
-        vga_writeln("FAIL");
-        return;
-    }
+    int btry = 0, bok = 0;
+    while (btry < 3 && !bok) { if (fs_write_sectors(0, 6, bootblob)) bok = 1; btry++; }
+    if (!bok) { vga_writeln("FAIL"); return; }
     vga_writeln("ok");
 
     vga_write("  kernel... ");
     uint32_t ksz = (uint32_t)&start_of_bss - 0x200000;
     uint32_t ksect = (ksz + 511) / 512;
     if (ksect > 122) { ksect = 122; vga_write("(truncated) "); }
-    if (!fs_write_sectors(6, (uint8_t)ksect, (void*)0x200000)) {
-        vga_writeln("FAIL");
-        return;
-    }
+    btry = 0; bok = 0;
+    while (btry < 3 && !bok) { if (fs_write_sectors(6, (uint8_t)ksect, (void*)0x200000)) bok = 1; btry++; }
+    if (!bok) { vga_writeln("FAIL"); return; }
     vga_writeln("ok");
     vga_write("  kernel: ");vga_write_dec(ksect);vga_write(" sectors\n");
 

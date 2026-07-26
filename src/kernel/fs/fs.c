@@ -42,7 +42,7 @@ static void pci_write(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off, uint3
 }
 
 static int ata_poll(uint16_t base) {
-    for (int i = 0; i < 500000; i++) {
+    for (int i = 0; i < 1000000; i++) {
         uint8_t st = inb(base + 7);
         if (st & 1) return 0;
         if (st & 0x20) return 0;
@@ -98,8 +98,19 @@ static int ata_wr(uint32_t lba, uint8_t cnt, const void *b) {
            ata_rw(1, abs_lba, cnt, (void *)b, 0x170, 0);
 }
 
+static void ata_srst(uint16_t base) {
+    outb(base + 0x206, 0x04);
+    for (volatile int i = 0; i < 10000; i++) __asm__ volatile ("pause");
+    outb(base + 0x206, 0x00);
+    for (volatile int i = 0; i < 100000; i++) {
+        uint8_t st = inb(base + 7);
+        if (!(st & 0x80)) break;
+        __asm__ volatile ("pause");
+    }
+}
 static int ata_init(void) {
     uint16_t b1 = 0, b2 = 0, found = 0;
+    ata_srst(0x1F0);
     for (int d = 0; d < 32 && !found; d++) for (int f = 0; f < 8; f++) {
         uint32_t id = pci_read(0, d, f, 0);
         if (id == 0xFFFFFFFF) { if (f == 0) break; continue; }
