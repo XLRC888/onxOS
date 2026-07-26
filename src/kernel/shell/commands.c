@@ -79,17 +79,20 @@ void cmd_man(const char *arg) {
     }
     if (!strcmp(t, "larj")) {
         vga_write("  larj - (planned) game scripting language\n  usage: not yet implemented\n"); vga_write(
-        "  a 2D side-scroller game language inspired by the\n"
-        "  vision of onxOS as a programmable platform.\n"
-        "  features (planned):\n"
-        "    [2D:Side]     scene { background, size }\n"
-        "    new(Char) { properties { skin, movement,\n"
-        "      walkSpeed, jumpHeight, damage, name, pos } }\n"
-        "    initialize(AS, LS, LC) expands to key bindings\n"
-        "      + state machine + physics loop\n"
-        "    game { loop {} }   spawn(\"name\") {}\n"
-        "  raw expansion: on_key(key,fn), on_update(dt),\n"
-        "  iframes/state machine, vx/vy/gravity physics\n"); return;
+        "  a 2D top-down game language that compiles to lil.\n"
+        "  transpiler: python3 larjc.py game.larj game.lil\n"
+        "  syntax:\n"
+        "    [2D:Top]     tag (top-down perspective)\n"
+        "    scene { background: name }     define scene\n"
+        "    new(Character) { properties {  define character\n"
+        "      walkSpeed, jumpHeight, name, position } }\n"
+        "    game { loop { }                game loop\n"
+        "      spawn(\"name\") {              spawn entity\n"
+        "        properties { position: XxY }\n"
+        "        initialize(AS, LS, LC) } }  key bindings\n"
+        "  initialize expands to: arrow keys, state machine,\n"
+        "  movement physics, collision stubs, PIT timing\n"
+        "  run: larjc.py -> game.lil -> lil /game.lil\n"); return;
     }
     if (!strcmp(t, "scr")) {
         vga_write("  scr - screen control library for lil\n  usage: func@scr args\n"); vga_write(
